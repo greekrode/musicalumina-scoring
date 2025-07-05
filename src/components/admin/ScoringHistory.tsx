@@ -34,6 +34,13 @@ export default function ScoringHistory() {
   const { events, loading: eventsLoading } = useEvents();
   const { categories } = useEventCategories(selectedEventId);
 
+  // Auto-select the most recent active event when events are loaded
+  useEffect(() => {
+    if (!eventsLoading && events.length > 0 && !selectedEventId) {
+      setSelectedEventId(events[0].id);
+    }
+  }, [events, eventsLoading, selectedEventId]);
+
   // Reset other filters when event changes
   useEffect(() => {
     setSelectedCategory("all");

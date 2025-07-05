@@ -48,6 +48,13 @@ export default function ResultsOverview() {
   const { aspects } = useScoringAspects(eventId);
   const { prizeConfigurations, loading: prizeConfigsLoading } = usePrizeConfigurations(eventId, categoryId, subcategoryId);
 
+  // Auto-select the most recent active event when events are loaded
+  useEffect(() => {
+    if (!eventsLoading && events.length > 0 && !selectedEventId) {
+      setSelectedEventId(events[0].id);
+    }
+  }, [events, eventsLoading, selectedEventId]);
+
   // Reset category selection when event changes
   useEffect(() => {
     setSelectedCategoryCombo('');

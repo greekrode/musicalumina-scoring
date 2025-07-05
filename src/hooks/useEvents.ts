@@ -21,7 +21,7 @@ export function useEvents() {
         .select('*')
         .in('type', ['competition', 'festival'])
         .eq('active', true)
-        .order('start_date', { ascending: true });
+        .order('start_date', { ascending: false });
 
       if (fetchError) throw fetchError;
 
