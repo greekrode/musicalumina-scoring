@@ -44,10 +44,11 @@ export function useEventCategories(eventId?: string) {
           id,
           name,
           event_id,
-          event_subcategories (
+          event_subcategories!inner (
             id,
             name,
-            age_requirement
+            age_requirement,
+            order_index
           )
         `)
         .in('event_id', eventIds)
@@ -60,7 +61,10 @@ export function useEventCategories(eventId?: string) {
       
       categoriesData?.forEach(category => {
         const subcategories = category.event_subcategories as any[];
-        subcategories?.forEach(subcategory => {
+        // Sort subcategories by order_index
+        const sortedSubcategories = subcategories?.sort((a, b) => a.order_index - b.order_index) || [];
+        
+        sortedSubcategories.forEach(subcategory => {
           transformedCategories.push({
             categoryId: category.id,
             subcategoryId: subcategory.id,

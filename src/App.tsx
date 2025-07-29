@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { AppProvider, useApp } from "./context/AppContext";
 import { SignIn, SignedIn, SignedOut } from "@clerk/clerk-react";
-import Header from "./components/Header";
+import { useEffect, useState } from "react";
 import AdminDashboard from "./components/admin/AdminDashboard";
+import Header from "./components/Header";
 import JuryInterface from "./components/jury/JuryInterface";
 import UnauthorizedModal from "./components/UnauthorizedModal";
+import { AppProvider, useApp } from "./context/AppContext";
 
 function LoginHeader() {
   return (

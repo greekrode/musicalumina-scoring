@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
 import { CheckCircle, ChevronDown, Clock, Filter, Pen, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useEventCategories } from '../../hooks/useEventCategories';
 import { useParticipants } from '../../hooks/useParticipants';
+import { useSongs } from '../../hooks/useSongs';
+import { supabase } from '../../lib/supabase';
 import { Registration } from '../../types';
 import ScoringModal from './ScoringModal';
-import { supabase } from '../../lib/supabase';
 
 export default function JuryInterface() {
   const { state } = useApp();
@@ -16,6 +17,7 @@ export default function JuryInterface() {
   const [participantScores, setParticipantScores] = useState<Record<string, any>>({});
   
   const { categories, loading: categoriesLoading } = useEventCategories();
+  const { getSongWithIndex } = useSongs();
   
   // Parse the selected category combo to get category and subcategory IDs
   const [categoryId, subcategoryId] = selectedCategoryCombo ? selectedCategoryCombo.split('|') : ['', ''];
@@ -229,7 +231,9 @@ export default function JuryInterface() {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="text-sm text-gray-900">{participant.song_title || 'Not specified'}</div>
+                            <div className="text-sm text-gray-900">
+                              {participant.song_title ? getSongWithIndex(participant.song_title) : 'Not specified'}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {participant.song_duration && participant.song_duration !== '0' && participant.song_duration !== '0:00' ? (
