@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, Music, AlertCircle, Clock } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
-import { Participant, Registration } from '../../types';
-import { supabase } from '../../lib/supabase';
-import { useScoringAspects } from '../../hooks/useScoringAspects';
-import { logScoringHistory } from '../../lib/scoringHistory';
+import React, { useState, useEffect } from "react";
+import { X, Save, Music, AlertCircle, Clock } from "lucide-react";
+import { useApp } from "../../context/AppContext";
+import { Participant, Registration } from "../../types";
+import { supabase } from "../../lib/supabase";
+import { useScoringAspects } from "../../hooks/useScoringAspects";
+import { logScoringHistory } from "../../lib/scoringHistory";
 
 interface ScoringModalProps {
   participant: Participant | Registration;
@@ -17,21 +17,43 @@ interface ScoringModalProps {
   onClose: () => void;
 }
 
-export default function ScoringModal({ participant, category, subcategoryId, onClose }: ScoringModalProps) {
+export default function ScoringModal({
+  participant,
+  category,
+  subcategoryId,
+  onClose,
+}: ScoringModalProps) {
   const { state } = useApp();
-  const [finalScore, setFinalScore] = useState<number>(0);
-  const [remarks, setRemarks] = useState<string>('');
+  const [finalScore, setFinalScore] = useState<number | undefined>(undefined);
+  const [remarks, setRemarks] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string>('');
-  const [existingScoringId, setExistingScoringId] = useState<string | null>(null);
+  const [error, setError] = useState<string>("");
+  const [existingScoringId, setExistingScoringId] = useState<string | null>(
+    null
+  );
   const [isFinalized, setIsFinalized] = useState(false);
-  
-  const registrationId = 'id' in participant ? participant.id : '';
-  const participantName = 'participant_name' in participant ? participant.participant_name : participant.fullName;
-  const piece = 'participant_name' in participant ? (participant.song_title || 'Not specified') : ('piece' in participant ? (participant.piece || 'Not specified') : 'Not specified');
-  const duration = 'participant_name' in participant ? (participant.song_duration || 'Not specified') : ('duration' in participant ? `${participant.duration} min` : 'Not specified');
-  
-  const { aspects, loading: aspectsLoading } = useScoringAspects(category.eventId);
+
+  const registrationId = "id" in participant ? participant.id : "";
+  const participantName =
+    "participant_name" in participant
+      ? participant.participant_name
+      : participant.fullName;
+  const piece =
+    "participant_name" in participant
+      ? participant.song_title || "Not specified"
+      : "piece" in participant
+      ? participant.piece || "Not specified"
+      : "Not specified";
+  const duration =
+    "participant_name" in participant
+      ? participant.song_duration || "Not specified"
+      : "duration" in participant
+      ? `${participant.duration} min`
+      : "Not specified";
+
+  const { aspects, loading: aspectsLoading } = useScoringAspects(
+    category.eventId
+  );
 
   // Load existing score if any
   useEffect(() => {
@@ -43,37 +65,55 @@ export default function ScoringModal({ participant, category, subcategoryId, onC
   const loadExistingScore = async () => {
     try {
       const { data: scoringData, error: scoringError } = await supabase
-        .from('event_scoring')
-        .select('id, final_score, remarks, finalized')
-        .eq('registration_id', registrationId)
-        .eq('jury_id', state.user?.id)
+        .from("event_scoring")
+        .select("id, final_score, remarks, finalized")
+        .eq("registration_id", registrationId)
+        .eq("jury_id", state.user?.id)
         .maybeSingle();
+
+      if (scoringError) {
+        console.error("Error loading existing score:", scoringError);
+      }
 
       if (scoringData) {
         setExistingScoringId(scoringData.id);
         setIsFinalized(scoringData.finalized);
-        setFinalScore(scoringData.final_score || 0);
-        setRemarks(scoringData.remarks || '');
+        setFinalScore(scoringData.final_score);
+        setRemarks(scoringData.remarks || "");
       }
     } catch (err) {
-      console.error('Error loading existing score:', err);
+      console.error("Error loading existing score:", err);
     }
   };
 
   const handleScoreChange = (value: string) => {
-    const numValue = parseFloat(value) || 0;
-    const clampedValue = Math.max(0, Math.min(100, numValue));
+    if (value === "") {
+      setFinalScore(undefined);
+      setError("");
+      return;
+    }
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) {
+      return;
+    }
+    // Round to 1 decimal place
+    const roundedValue = Math.round(numValue * 10) / 10;
+    const clampedValue = Math.max(0, Math.min(100, roundedValue));
     setFinalScore(clampedValue);
-    setError('');
+    setError("");
   };
 
   const validateScore = () => {
+    if (finalScore === undefined || finalScore === null) {
+      setError("Please enter a score");
+      return false;
+    }
     if (finalScore < 0 || finalScore > 100) {
-      setError('Score must be between 0 and 100');
+      setError("Score must be between 0 and 100");
       return false;
     }
     if (finalScore === 0) {
-      setError('Please enter a score');
+      setError("Please enter a score greater than 0");
       return false;
     }
     return true;
@@ -81,44 +121,44 @@ export default function ScoringModal({ participant, category, subcategoryId, onC
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateScore() || isFinalized) {
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
       if (existingScoringId) {
         // Get existing data for history logging
         const { data: existingScoring } = await supabase
-          .from('event_scoring')
-          .select('*')
-          .eq('id', existingScoringId)
+          .from("event_scoring")
+          .select("*")
+          .eq("id", existingScoringId)
           .single();
 
         // Update existing score
         const updatedData = {
           final_score: finalScore,
           remarks: remarks,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         };
 
         const { error } = await supabase
-          .from('event_scoring')
+          .from("event_scoring")
           .update(updatedData)
-          .eq('id', existingScoringId);
+          .eq("id", existingScoringId);
 
         if (error) throw error;
 
         // Log history for scoring update
         await logScoringHistory({
-          tableName: 'event_scoring',
+          tableName: "event_scoring",
           recordId: existingScoringId,
-          operation: 'UPDATE',
+          operation: "UPDATE",
           beforeData: existingScoring,
           afterData: { ...existingScoring, ...updatedData },
-          changedBy: state.user?.id || '',
+          changedBy: state.user?.id || "",
           juryName: state.user?.name,
           eventId: category.eventId,
           registrationId: registrationId,
@@ -134,11 +174,11 @@ export default function ScoringModal({ participant, category, subcategoryId, onC
           jury_name: state.user?.name,
           final_score: finalScore,
           remarks: remarks,
-          finalized: false
+          finalized: false,
         };
 
         const { data: scoringData, error: scoringError } = await supabase
-          .from('event_scoring')
+          .from("event_scoring")
           .insert(newScoringData)
           .select()
           .single();
@@ -147,11 +187,11 @@ export default function ScoringModal({ participant, category, subcategoryId, onC
 
         // Log history for new scoring record
         await logScoringHistory({
-          tableName: 'event_scoring',
+          tableName: "event_scoring",
           recordId: scoringData.id,
-          operation: 'INSERT',
+          operation: "INSERT",
           afterData: scoringData,
-          changedBy: state.user?.id || '',
+          changedBy: state.user?.id || "",
           juryName: state.user?.name,
           eventId: category.eventId,
           registrationId: registrationId,
@@ -161,8 +201,8 @@ export default function ScoringModal({ participant, category, subcategoryId, onC
 
       onClose();
     } catch (err) {
-      console.error('Error saving score:', err);
-      setError('Failed to save score. Please try again.');
+      console.error("Error saving score:", err);
+      setError("Failed to save score. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -206,7 +246,9 @@ export default function ScoringModal({ participant, category, subcategoryId, onC
 
           <div className="mt-4 p-4 bg-white/10 rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-piano-cream/80">Performance Piece</span>
+              <span className="text-sm text-piano-cream/80">
+                Performance Piece
+              </span>
               <div className="flex items-center text-sm text-piano-cream/80">
                 <Clock className="w-4 h-4 mr-1" />
                 {duration}
@@ -223,8 +265,12 @@ export default function ScoringModal({ participant, category, subcategoryId, onC
               <div className="flex items-center">
                 <AlertCircle className="w-5 h-5 text-orange-600 mr-2" />
                 <div>
-                  <h3 className="text-sm font-medium text-orange-800">Score Finalized</h3>
-                  <p className="text-sm text-orange-600">This score has been finalized and cannot be modified.</p>
+                  <h3 className="text-sm font-medium text-orange-800">
+                    Score Finalized
+                  </h3>
+                  <p className="text-sm text-orange-600">
+                    This score has been finalized and cannot be modified.
+                  </p>
                 </div>
               </div>
             </div>
@@ -233,15 +279,26 @@ export default function ScoringModal({ participant, category, subcategoryId, onC
           {/* Scoring Aspects (Reference Only) */}
           {aspects.length > 0 && (
             <div className="mb-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Scoring Criteria (Reference)</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">
+                Scoring Criteria (Reference)
+              </h3>
               <div className="space-y-2">
                 {aspects.map((aspect) => (
-                  <div key={aspect.id} className="p-2 bg-gray-50 rounded border">
+                  <div
+                    key={aspect.id}
+                    className="p-2 bg-gray-50 rounded border"
+                  >
                     <div className="flex items-center justify-between mb-1">
-                      <h4 className="text-xs font-medium text-gray-800">{aspect.name}</h4>
-                      <span className="text-xs text-gray-500">{aspect.weight}%</span>
+                      <h4 className="text-xs font-medium text-gray-800">
+                        {aspect.name}
+                      </h4>
+                      <span className="text-xs text-gray-500">
+                        {aspect.weight}%
+                      </span>
                     </div>
-                    <p className="text-xs text-gray-600 leading-relaxed">{aspect.description}</p>
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      {aspect.description}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -251,16 +308,19 @@ export default function ScoringModal({ participant, category, subcategoryId, onC
           {/* Final Score Input */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-lg font-semibold text-piano-wine mb-3">
+              <label className="block text-lg font-semibold text-piano-wine mb-1">
                 Final Score (0-100)
               </label>
+              <p className="text-sm text-gray-600 mb-3">
+                Maximum one decimal place allowed (e.g., 85.5)
+              </p>
               <div className="relative">
                 <input
                   type="number"
                   min="0"
                   max="100"
                   step="0.1"
-                  value={finalScore}
+                  value={finalScore ?? ""}
                   onChange={(e) => handleScoreChange(e.target.value)}
                   disabled={isFinalized}
                   className="w-full px-4 py-3 text-xl font-bold text-center border-2 border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
@@ -270,9 +330,7 @@ export default function ScoringModal({ participant, category, subcategoryId, onC
                   / 100
                 </div>
               </div>
-              {error && (
-                <p className="mt-2 text-sm text-red-600">{error}</p>
-              )}
+              {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
             </div>
 
             {/* Remarks Field */}
@@ -313,7 +371,7 @@ export default function ScoringModal({ participant, category, subcategoryId, onC
                   ) : (
                     <>
                       <Save className="w-4 h-4 mr-2" />
-                      {existingScoringId ? 'Update Score' : 'Submit Score'}
+                      {existingScoringId ? "Update Score" : "Submit Score"}
                     </>
                   )}
                 </button>

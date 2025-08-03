@@ -1,27 +1,45 @@
-import { CheckCircle, ChevronDown, Clock, Filter, Pen, Search } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useApp } from '../../context/AppContext';
-import { useEventCategories } from '../../hooks/useEventCategories';
-import { useParticipants } from '../../hooks/useParticipants';
-import { useSongs } from '../../hooks/useSongs';
-import { supabase } from '../../lib/supabase';
-import { Registration } from '../../types';
-import ScoringModal from './ScoringModal';
+import {
+  CheckCircle,
+  ChevronDown,
+  Clock,
+  Filter,
+  Pen,
+  Search,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { useApp } from "../../context/AppContext";
+import { useEventCategories } from "../../hooks/useEventCategories";
+import { useParticipants } from "../../hooks/useParticipants";
+import { useSongs } from "../../hooks/useSongs";
+import { supabase } from "../../lib/supabase";
+import { Registration } from "../../types";
+import ScoringModal from "./ScoringModal";
 
 export default function JuryInterface() {
   const { state } = useApp();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
-  const [selectedCategoryCombo, setSelectedCategoryCombo] = useState<string>('');
-  const [scoringParticipant, setScoringParticipant] = useState<Registration | null>(null);
-  const [participantScores, setParticipantScores] = useState<Record<string, any>>({});
-  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "pending" | "completed"
+  >("all");
+  const [selectedCategoryCombo, setSelectedCategoryCombo] =
+    useState<string>("");
+  const [scoringParticipant, setScoringParticipant] =
+    useState<Registration | null>(null);
+  const [participantScores, setParticipantScores] = useState<
+    Record<string, any>
+  >({});
+
   const { categories, loading: categoriesLoading } = useEventCategories();
   const { getSongWithIndex } = useSongs();
-  
+
   // Parse the selected category combo to get category and subcategory IDs
-  const [categoryId, subcategoryId] = selectedCategoryCombo ? selectedCategoryCombo.split('|') : ['', ''];
-  const { participants, loading: participantsLoading } = useParticipants(categoryId, subcategoryId);
+  const [categoryId, subcategoryId] = selectedCategoryCombo
+    ? selectedCategoryCombo.split("|")
+    : ["", ""];
+  const { participants, loading: participantsLoading } = useParticipants(
+    categoryId,
+    subcategoryId
+  );
 
   // Load participant scores when participants or user changes
   useEffect(() => {
@@ -37,29 +55,37 @@ export default function JuryInterface() {
   const fetchParticipantScores = async () => {
     try {
       const scores: Record<string, any> = {};
-      
+
       for (const participant of participants) {
         const { data, error } = await supabase
-          .from('event_scoring')
-          .select('id, final_score, finalized')
-          .eq('registration_id', participant.id)
-          .eq('jury_id', state.user?.id)
+          .from("event_scoring")
+          .select("id, final_score, finalized")
+          .eq("registration_id", participant.id)
+          .eq("jury_id", state.user?.id)
           .maybeSingle();
 
+        if (error) {
+          console.error("Error fetching participant scores:", error);
+        }
+
         if (data) {
-          scores[participant.id] = { 
-            hasScore: true, 
+          scores[participant.id] = {
+            hasScore: true,
             finalized: data.finalized,
-            finalScore: data.final_score || 0
+            finalScore: data.final_score || 0,
           };
         } else {
-          scores[participant.id] = { hasScore: false, finalized: false, finalScore: 0 };
+          scores[participant.id] = {
+            hasScore: false,
+            finalized: false,
+            finalScore: 0,
+          };
         }
       }
-      
+
       setParticipantScores(scores);
     } catch (err) {
-      console.error('Error fetching participant scores:', err);
+      console.error("Error fetching participant scores:", err);
     }
   };
 
@@ -74,18 +100,19 @@ export default function JuryInterface() {
 
     // Apply search filter
     if (searchTerm) {
-      filtered = filtered.filter(p =>
-        p.participant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.song_title || '').toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(
+        (p) =>
+          p.participant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (p.song_title || "").toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Apply status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(p => {
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((p) => {
         const scoreData = participantScores[p.id];
         const hasScore = scoreData?.hasScore || false;
-        return statusFilter === 'completed' ? hasScore : !hasScore;
+        return statusFilter === "completed" ? hasScore : !hasScore;
       });
     }
 
@@ -94,7 +121,7 @@ export default function JuryInterface() {
 
   const getParticipantStatus = (participant: Registration) => {
     const scoreData = participantScores[participant.id];
-    return scoreData?.hasScore ? 'completed' : 'pending';
+    return scoreData?.hasScore ? "completed" : "pending";
   };
 
   const filteredParticipants = getFilteredParticipants();
@@ -110,8 +137,12 @@ export default function JuryInterface() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-piano-wine mb-2">Jury Scoring Interface</h1>
-        <p className="text-gray-600">Score participants for the selected competition category</p>
+        <h1 className="text-3xl font-bold text-piano-wine mb-2">
+          Jury Scoring Interface
+        </h1>
+        <p className="text-gray-600">
+          Score participants for the selected competition category
+        </p>
       </div>
 
       {/* Category Selection */}
@@ -128,8 +159,11 @@ export default function JuryInterface() {
                 className="w-full appearance-none bg-white border border-piano-gold/30 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-piano-gold focus:border-transparent"
               >
                 <option value="">Select a category...</option>
-                {categories.map(category => (
-                  <option key={`${category.categoryId}|${category.subcategoryId}`} value={`${category.categoryId}|${category.subcategoryId}`}>
+                {categories.map((category) => (
+                  <option
+                    key={`${category.categoryId}|${category.subcategoryId}`}
+                    value={`${category.categoryId}|${category.subcategoryId}`}
+                  >
                     {category.displayName}
                   </option>
                 ))}
@@ -217,9 +251,12 @@ export default function JuryInterface() {
                       const status = getParticipantStatus(participant);
                       const scoreData = participantScores[participant.id];
                       const hasScore = scoreData?.hasScore || false;
-                      
+
                       return (
-                        <tr key={participant.id} className="hover:bg-piano-cream/30 transition-colors duration-150">
+                        <tr
+                          key={participant.id}
+                          className="hover:bg-piano-cream/30 transition-colors duration-150"
+                        >
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div>
                               <div className="text-sm font-medium text-piano-wine">
@@ -232,23 +269,31 @@ export default function JuryInterface() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm text-gray-900">
-                              {participant.song_title ? getSongWithIndex(participant.song_title) : 'Not specified'}
+                              {participant.song_title
+                                ? getSongWithIndex(participant.song_title)
+                                : "Not specified"}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            {participant.song_duration && participant.song_duration !== '0' && participant.song_duration !== '0:00' ? (
-                              <div className="text-sm text-gray-900">{participant.song_duration}</div>
+                            {participant.song_duration &&
+                            participant.song_duration !== "0" &&
+                            participant.song_duration !== "0:00" ? (
+                              <div className="text-sm text-gray-900">
+                                {participant.song_duration}
+                              </div>
                             ) : (
                               <div className="text-sm text-gray-400">--</div>
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              status === 'completed'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-amber-100 text-amber-800'
-                            }`}>
-                              {status === 'completed' ? (
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                status === "completed"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-amber-100 text-amber-800"
+                              }`}
+                            >
+                              {status === "completed" ? (
                                 <>
                                   <CheckCircle className="w-4 h-4 mr-1" />
                                   Completed
@@ -263,7 +308,9 @@ export default function JuryInterface() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-medium text-piano-wine">
-                              {hasScore ? scoreData.finalScore.toFixed(2) : '--'}
+                              {hasScore
+                                ? scoreData.finalScore.toFixed(2)
+                                : "--"}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -272,10 +319,14 @@ export default function JuryInterface() {
                               disabled={scoreData?.finalized}
                               className={`inline-flex items-center p-2 rounded-lg focus:ring-2 focus:ring-offset-2 transition-colors duration-200 ${
                                 scoreData?.finalized
-                                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                  : 'bg-piano-wine text-white hover:bg-piano-wine/90 focus:ring-piano-wine'
+                                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                  : "bg-piano-wine text-white hover:bg-piano-wine/90 focus:ring-piano-wine"
                               }`}
-                              title={scoreData?.finalized ? 'Score has been finalized and cannot be edited' : 'Score participant'}
+                              title={
+                                scoreData?.finalized
+                                  ? "Score has been finalized and cannot be edited"
+                                  : "Score participant"
+                              }
                             >
                               <Pen className="w-4 h-4" />
                             </button>
@@ -290,11 +341,13 @@ export default function JuryInterface() {
               {filteredParticipants.length === 0 && (
                 <div className="text-center py-12 bg-piano-cream/30">
                   <Search className="mx-auto h-12 w-12 text-piano-wine/40" />
-                  <h3 className="mt-2 text-sm font-medium text-piano-wine">No participants found</h3>
+                  <h3 className="mt-2 text-sm font-medium text-piano-wine">
+                    No participants found
+                  </h3>
                   <p className="mt-1 text-sm text-gray-500">
-                    {searchTerm || statusFilter !== 'all'
-                      ? 'Try adjusting your search or filter criteria.'
-                      : 'No participants registered for this category yet.'}
+                    {searchTerm || statusFilter !== "all"
+                      ? "Try adjusting your search or filter criteria."
+                      : "No participants registered for this category yet."}
                   </p>
                 </div>
               )}
@@ -308,8 +361,16 @@ export default function JuryInterface() {
           participant={scoringParticipant}
           category={{
             id: categoryId,
-            name: categories.find(c => c.categoryId === categoryId && c.subcategoryId === subcategoryId)?.displayName || '',
-            eventId: categories.find(c => c.categoryId === categoryId && c.subcategoryId === subcategoryId)?.eventId,
+            name:
+              categories.find(
+                (c) =>
+                  c.categoryId === categoryId &&
+                  c.subcategoryId === subcategoryId
+              )?.displayName || "",
+            eventId: categories.find(
+              (c) =>
+                c.categoryId === categoryId && c.subcategoryId === subcategoryId
+            )?.eventId,
           }}
           subcategoryId={subcategoryId}
           onClose={() => {
