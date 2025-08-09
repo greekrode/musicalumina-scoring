@@ -26,7 +26,7 @@ export function useParticipants(categoryId?: string, subcategoryId?: string) {
         .select('*')
         .eq('category_id', categoryId)
         .eq('subcategory_id', subcategoryId)
-        .order('created_at', { ascending: true });
+        .order('order_index', { ascending: true });
 
       if (fetchError) throw fetchError;
 
