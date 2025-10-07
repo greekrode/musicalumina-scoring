@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Save, Music, AlertCircle, Clock } from "lucide-react";
+import { X, Save, Music, AlertCircle, Clock, Clapperboard, FileText } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { Participant, Registration } from "../../types";
 import { supabase } from "../../lib/supabase";
@@ -50,6 +50,29 @@ export default function ScoringModal({
       : "duration" in participant
       ? `${participant.duration} min`
       : "Not specified";
+
+  // Derive video URL when available (only present on Registration type)
+  const rawVideoUrl =
+    "participant_name" in participant ? participant.video_url : undefined;
+  const normalizedVideoUrl = rawVideoUrl
+    ? rawVideoUrl.startsWith("http://") || rawVideoUrl.startsWith("https://")
+      ? rawVideoUrl
+      : `https://${rawVideoUrl}`
+    : undefined;
+
+  // Derive repertoire PDF URL (supports string or single-item array)
+  const rawSongPdf =
+    "participant_name" in participant ? participant.song_pdf_url : undefined;
+  const rawPdfUrl = Array.isArray(rawSongPdf)
+    ? rawSongPdf[0]
+    : typeof rawSongPdf === "string"
+    ? rawSongPdf
+    : undefined;
+  const normalizedPdfUrl = rawPdfUrl
+    ? rawPdfUrl.startsWith("http://") || rawPdfUrl.startsWith("https://")
+      ? rawPdfUrl
+      : `https://${rawPdfUrl}`
+    : undefined;
 
   const { aspects, loading: aspectsLoading } = useScoringAspects(
     category.eventId
@@ -255,6 +278,32 @@ export default function ScoringModal({
               </div>
             </div>
             <p className="text-white font-medium">{piece}</p>
+            {(normalizedVideoUrl || normalizedPdfUrl) && (
+              <div className="mt-1 flex items-center gap-4">
+                {normalizedVideoUrl && (
+                  <a
+                    href={normalizedVideoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center text-piano-gold hover:text-piano-gold/80"
+                  >
+                    <Clapperboard className="w-4 h-4 mr-1" />
+                    Video recording
+                  </a>
+                )}
+                {normalizedPdfUrl && (
+                  <a
+                    href={normalizedPdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center text-piano-gold hover:text-piano-gold/80"
+                  >
+                    <FileText className="w-4 h-4 mr-1" />
+                    Repertoire
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
