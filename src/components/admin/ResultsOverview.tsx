@@ -244,6 +244,9 @@ export default function ResultsOverview() {
     const remainingParticipants = [...eligibleParticipants];
 
     // Process each prize level in order
+    // Prize brackets define the MINIMUM score requirement, but winners are ranked globally by score
+    // If a prize level is full, the next highest scorer gets the next prize level,
+    // even if their score doesn't fit that bracket's range
     for (const prizeConfig of sortedPrizes) {
       const prizeAssignment: PrizeAssignment = {
         prizeLevel: prizeConfig.prize_level,
@@ -256,12 +259,12 @@ export default function ResultsOverview() {
         }
       };
 
-      // Find participants eligible for this prize level
+      // Filter participants who meet the MINIMUM score requirement (ignore max_score)
+      // The remainingParticipants array is already sorted by score (descending)
       const eligibleForThisPrize = remainingParticipants.filter(participant => {
         const score = participant.averageScore;
-        const meetsMinScore = prizeConfig.min_score === null || score >= prizeConfig.min_score;
-        const meetsMaxScore = prizeConfig.max_score === null || score <= prizeConfig.max_score;
-        return meetsMinScore && meetsMaxScore;
+        // Only check minimum score - max_score is informational, not a hard requirement
+        return prizeConfig.min_score === null || score >= prizeConfig.min_score;
       });
 
       if (eligibleForThisPrize.length === 0) {
@@ -279,7 +282,7 @@ export default function ResultsOverview() {
         scoreGroups.get(score)!.push(participant);
       });
 
-      // Sort scores in descending order
+      // Sort scores in descending order (already sorted, but ensure consistency)
       const sortedScores = Array.from(scoreGroups.keys()).sort((a, b) => b - a);
       
       let winnersAssigned = 0;
