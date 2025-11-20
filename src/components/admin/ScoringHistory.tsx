@@ -1,23 +1,14 @@
-import React, { useState, useEffect } from "react";
-import {
-  Clock,
-  User,
-  Music,
-  FileText,
-  Search,
-  Filter,
-  History,
-  Calendar,
-} from "lucide-react";
+import { Calendar, Clock, FileText, History, Search, User } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useApp } from "../../context/AppContext";
-import { EventScoringHistory } from "../../types";
-import {
-  getScoringHistory,
-  formatHistoryEntry,
-} from "../../lib/scoringHistory";
 import { useEventCategories } from "../../hooks/useEventCategories";
 import { useEvents } from "../../hooks/useEvents";
 import { useRealtimeScoring } from "../../hooks/useRealtimeScoring";
+import {
+  formatHistoryEntry,
+  getScoringHistory,
+} from "../../lib/scoringHistory";
+import { EventScoringHistory } from "../../types";
 
 export default function ScoringHistory() {
   const { state } = useApp();
@@ -61,8 +52,10 @@ export default function ScoringHistory() {
   // Set up realtime subscriptions for history changes
   useRealtimeScoring({
     eventId: selectedEventId,
-    categoryId: selectedCategory !== 'all' ? selectedCategory.split('|')[0] : undefined,
-    subcategoryId: selectedCategory !== 'all' ? selectedCategory.split('|')[1] : undefined,
+    categoryId:
+      selectedCategory !== "all" ? selectedCategory.split("|")[0] : undefined,
+    subcategoryId:
+      selectedCategory !== "all" ? selectedCategory.split("|")[1] : undefined,
     onScoringChange: () => {
       // Don't refresh on scoring changes in history view - we only care about history changes
     },
@@ -72,7 +65,7 @@ export default function ScoringHistory() {
         fetchHistory();
       }
     },
-    enabled: !!selectedEventId
+    enabled: !!selectedEventId,
   });
 
   const fetchHistory = async () => {

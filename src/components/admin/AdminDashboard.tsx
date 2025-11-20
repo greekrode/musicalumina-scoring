@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Calendar, BarChart3, Users, Trophy, FileText } from "lucide-react";
+import { BarChart3, Calendar, FileText } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useApp } from "../../context/AppContext";
 import EventsManager from "./EventsManager";
 import ResultsOverview from "./ResultsOverview";
@@ -8,8 +8,16 @@ import ScoringHistory from "./ScoringHistory";
 type TabType = "events" | "results" | "history";
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<TabType>("events");
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (typeof window === "undefined") return "events";
+    return (localStorage.getItem("adminDashboardActiveTab") as TabType) || "events";
+  });
   const { state } = useApp();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("adminDashboardActiveTab", activeTab);
+  }, [activeTab]);
 
   const tabs = [
     { id: "events" as TabType, name: "Events", icon: Calendar },

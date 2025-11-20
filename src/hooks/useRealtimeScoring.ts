@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { RealtimeChannel, REALTIME_LISTEN_TYPES } from '@supabase/supabase-js';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 interface UseRealtimeScoringProps {
   eventId?: string;
@@ -9,6 +9,7 @@ interface UseRealtimeScoringProps {
   onScoringChange: () => void;
   onHistoryChange?: () => void;
   enabled?: boolean;
+  refreshKey?: number;
 }
 
 export interface RealtimeStatus {
@@ -23,11 +24,13 @@ export function useRealtimeScoring({
   subcategoryId,
   onScoringChange,
   onHistoryChange,
-  enabled = true
+  enabled = true,
+  refreshKey = 0
 }: UseRealtimeScoringProps) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const historyChannelRef = useRef<RealtimeChannel | null>(null);
   const [status, setStatus] = useState<RealtimeStatus>({ connected: false });
+  const currentRefreshKeyRef = useRef(refreshKey);
   
   // Use refs to store stable references to callbacks
   const onScoringChangeRef = useRef(onScoringChange);
@@ -42,58 +45,88 @@ export function useRealtimeScoring({
     onHistoryChangeRef.current = onHistoryChange;
   }, [onHistoryChange]);
 
-  useEffect(() => {
-    if (!enabled) {
-      cleanup();
-      return;
+  const cleanup = useCallback(async () => {
+    if (channelRef.current) {
+      try {
+        await supabase.removeChannel(channelRef.current);
+      } catch (err) {
+        console.warn('Failed to remove realtime channel', err);
+      }
+      channelRef.current = null;
     }
+    if (historyChannelRef.current) {
+      try {
+        await supabase.removeChannel(historyChannelRef.current);
+      } catch (err) {
+        console.warn('Failed to remove history realtime channel', err);
+      }
+      historyChannelRef.current = null;
+    }
+  }, []);
 
-    // Clean up existing subscriptions
-    cleanup();
+  useEffect(() => {
+    let isMounted = true;
 
-    // Subscribe to event_scoring changes
-    if (eventId) {
+    const setupRealtime = async () => {
+      if (!enabled || !eventId) {
+        await cleanup();
+        if (isMounted) {
+          setStatus({ connected: false });
+          currentRefreshKeyRef.current = refreshKey;
+        }
+        return;
+      }
+
+      currentRefreshKeyRef.current = refreshKey;
+      setStatus({ connected: false });
+      await cleanup();
+
       const scoringChannel = supabase
-        .channel(`scoring-${eventId}-${categoryId || 'all'}-${subcategoryId || 'all'}`)
+        .channel(`scoring-${eventId}-${categoryId || 'all'}-${subcategoryId || 'all'}-${refreshKey}`)
         .on(
           'postgres_changes',
           {
             event: '*',
             schema: 'public',
             table: 'event_scoring',
-            filter: categoryId && subcategoryId 
-              ? `category_id=eq.${categoryId}` 
-              : undefined
+            filter:
+              categoryId && subcategoryId
+                ? `category_id=eq.${categoryId}`
+                : undefined,
           },
           (payload) => {
-            // Additional filtering for subcategory if needed
             if (subcategoryId && payload.new && 'subcategory_id' in payload.new) {
               if (payload.new.subcategory_id !== subcategoryId) {
-                return; // Skip if not for current subcategory
+                return;
               }
             }
-            
-            // Trigger refresh using ref
+
             onScoringChangeRef.current();
           }
         )
         .subscribe((subscriptionStatus, err) => {
+          const isCurrentSubscription =
+            currentRefreshKeyRef.current === refreshKey;
+
+          if (!isCurrentSubscription) {
+            return;
+          }
+
           if (subscriptionStatus === 'SUBSCRIBED') {
-            setStatus(prev => ({ ...prev, connected: true, error: undefined }));
+            setStatus({ connected: true, error: undefined });
           } else if (subscriptionStatus === 'CHANNEL_ERROR') {
             const errorMsg = err?.message || 'Channel subscription error';
-            setStatus(prev => ({ ...prev, connected: false, error: errorMsg, lastError: errorMsg }));
+            setStatus({ connected: false, error: errorMsg, lastError: errorMsg });
           } else if (subscriptionStatus === 'TIMED_OUT') {
             const errorMsg = 'Realtime connection timed out';
-            setStatus(prev => ({ ...prev, connected: false, error: errorMsg, lastError: errorMsg }));
+            setStatus({ connected: false, error: errorMsg, lastError: errorMsg });
           } else if (subscriptionStatus === 'CLOSED') {
-            setStatus(prev => ({ ...prev, connected: false }));
+            setStatus({ connected: false });
           }
         });
 
       channelRef.current = scoringChannel;
 
-      // Subscribe to scoring history changes if callback provided
       if (onHistoryChangeRef.current) {
         const historyChannel = supabase
           .channel(`history-${eventId}`)
@@ -103,16 +136,23 @@ export function useRealtimeScoring({
               event: '*',
               schema: 'public',
               table: 'event_scoring_history',
-              filter: `event_id=eq.${eventId}`
+              filter: `event_id=eq.${eventId}`,
             },
             (payload) => {
-              // Additional filtering for category if needed
-              if (categoryId && subcategoryId && payload.new && 'category_id' in payload.new) {
-                if (payload.new.category_id !== categoryId || payload.new.subcategory_id !== subcategoryId) {
-                  return; // Skip if not for current category
+              if (
+                categoryId &&
+                subcategoryId &&
+                payload.new &&
+                'category_id' in payload.new
+              ) {
+                if (
+                  payload.new.category_id !== categoryId ||
+                  payload.new.subcategory_id !== subcategoryId
+                ) {
+                  return;
                 }
               }
-              
+
               onHistoryChangeRef.current?.();
             }
           )
@@ -126,26 +166,28 @@ export function useRealtimeScoring({
 
         historyChannelRef.current = historyChannel;
       }
-    }
+    };
 
-    return cleanup;
-  }, [eventId, categoryId, subcategoryId, enabled]); // Removed callbacks from dependency array
+    setupRealtime();
 
-  const cleanup = () => {
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-    if (historyChannelRef.current) {
-      supabase.removeChannel(historyChannelRef.current);
-      historyChannelRef.current = null;
-    }
-  };
+    return () => {
+      isMounted = false;
+      cleanup();
+    };
+  }, [
+    eventId,
+    categoryId,
+    subcategoryId,
+    enabled,
+    refreshKey,
+    cleanup,
+  ]);
 
-  // Cleanup on unmount
   useEffect(() => {
-    return cleanup;
-  }, []);
+    return () => {
+      cleanup();
+    };
+  }, [cleanup]);
 
   return { cleanup, status };
 } 
