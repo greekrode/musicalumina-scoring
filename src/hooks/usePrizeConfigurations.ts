@@ -1,48 +1,41 @@
-import { useState, useEffect } from 'react';
+import { useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { PrizeConfiguration } from '../types';
+import { useSupabaseQuery } from './useSupabaseQuery';
 
-export function usePrizeConfigurations(eventId?: string, categoryId?: string, subcategoryId?: string) {
-  const [prizeConfigurations, setPrizeConfigurations] = useState<PrizeConfiguration[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function usePrizeConfigurations(
+  eventId?: string,
+  categoryId?: string,
+  subcategoryId?: string
+) {
+  const enabled = !!eventId && !!categoryId && !!subcategoryId;
 
-  useEffect(() => {
-    if (eventId && categoryId && subcategoryId) {
-      fetchPrizeConfigurations();
-    } else {
-      setPrizeConfigurations([]);
-      setLoading(false);
-    }
-  }, [eventId, categoryId, subcategoryId]);
-
-  const fetchPrizeConfigurations = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error: fetchError } = await supabase
+  const {
+    data: prizeConfigurations,
+    isLoading,
+    error,
+    refetch,
+  } = useSupabaseQuery<PrizeConfiguration[]>(
+    async () => {
+      const { data, error } = await supabase
         .from('event_prize_configurations')
         .select('*')
-        .eq('event_id', eventId)
-        .eq('category_id', categoryId)
-        .eq('subcategory_id', subcategoryId)
+        .eq('event_id', eventId!)
+        .eq('category_id', categoryId!)
+        .eq('subcategory_id', subcategoryId!)
         .eq('active', true)
         .order('display_order', { ascending: true });
 
-      if (fetchError) throw fetchError;
+      if (error) throw error;
+      return data || [];
+    },
+    [eventId, categoryId, subcategoryId],
+    [],
+    { enabled }
+  );
 
-      setPrizeConfigurations(data || []);
-    } catch (err) {
-      console.error('Error fetching prize configurations:', err);
-      setError('Failed to fetch prize configurations');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createPrizeConfiguration = async (prizeConfig: Omit<PrizeConfiguration, 'id' | 'created_at' | 'updated_at'>) => {
-    try {
+  const createPrizeConfiguration = useCallback(
+    async (prizeConfig: Omit<PrizeConfiguration, 'id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
         .from('event_prize_configurations')
         .insert(prizeConfig)
@@ -50,17 +43,14 @@ export function usePrizeConfigurations(eventId?: string, categoryId?: string, su
         .single();
 
       if (error) throw error;
-
-      setPrizeConfigurations(prev => [...prev, data].sort((a, b) => a.display_order - b.display_order));
+      refetch();
       return data;
-    } catch (err) {
-      console.error('Error creating prize configuration:', err);
-      throw err;
-    }
-  };
+    },
+    [refetch]
+  );
 
-  const updatePrizeConfiguration = async (id: string, updates: Partial<PrizeConfiguration>) => {
-    try {
+  const updatePrizeConfiguration = useCallback(
+    async (id: string, updates: Partial<PrizeConfiguration>) => {
       const { data, error } = await supabase
         .from('event_prize_configurations')
         .update(updates)
@@ -69,41 +59,32 @@ export function usePrizeConfigurations(eventId?: string, categoryId?: string, su
         .single();
 
       if (error) throw error;
-
-      setPrizeConfigurations(prev => 
-        prev.map(config => config.id === id ? data : config)
-           .sort((a, b) => a.display_order - b.display_order)
-      );
+      refetch();
       return data;
-    } catch (err) {
-      console.error('Error updating prize configuration:', err);
-      throw err;
-    }
-  };
+    },
+    [refetch]
+  );
 
-  const deletePrizeConfiguration = async (id: string) => {
-    try {
+  const deletePrizeConfiguration = useCallback(
+    async (id: string) => {
       const { error } = await supabase
         .from('event_prize_configurations')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
-
-      setPrizeConfigurations(prev => prev.filter(config => config.id !== id));
-    } catch (err) {
-      console.error('Error deleting prize configuration:', err);
-      throw err;
-    }
-  };
+      refetch();
+    },
+    [refetch]
+  );
 
   return {
     prizeConfigurations,
-    loading,
+    loading: isLoading,
     error,
     createPrizeConfiguration,
     updatePrizeConfiguration,
     deletePrizeConfiguration,
-    refetch: fetchPrizeConfigurations
+    refetch,
   };
-} 
+}

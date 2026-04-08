@@ -1,38 +1,33 @@
-import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Event } from '../types';
+import { useSupabaseQuery } from './useSupabaseQuery';
 
-export function useEvents() {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface UseEventsOptions {
+  includeInactive?: boolean;
+}
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
+export function useEvents(options?: UseEventsOptions) {
+  const includeInactive = options?.includeInactive ?? false;
 
-  const fetchEvents = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error: fetchError } = await supabase
+  const { data: events, isLoading, error, refetch } = useSupabaseQuery<Event[]>(
+    async () => {
+      let query = supabase
         .from('events')
         .select('*')
         .in('type', ['competition', 'festival'])
-        .eq('active', true)
         .order('start_date', { ascending: false });
 
-      if (fetchError) throw fetchError;
+      if (!includeInactive) {
+        query = query.eq('active', true);
+      }
 
-      setEvents(data || []);
-    } catch (err) {
-      console.error('Error fetching events:', err);
-      setError('Failed to fetch events');
-    } finally {
-      setLoading(false);
-    }
-  };
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+    [includeInactive],
+    []
+  );
 
-  return { events, loading, error, refetch: fetchEvents };
-} 
+  return { events, loading: isLoading, error, refetch };
+}

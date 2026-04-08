@@ -1,42 +1,23 @@
-import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { EventScoringAspect } from '../types';
+import { useSupabaseQuery } from './useSupabaseQuery';
 
 export function useScoringAspects(eventId?: string) {
-  const [aspects, setAspects] = useState<EventScoringAspect[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (eventId) {
-      fetchAspects();
-    } else {
-      setAspects([]);
-      setLoading(false);
-    }
-  }, [eventId]);
-
-  const fetchAspects = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error: fetchError } = await supabase
+  const { data: aspects, isLoading, error, refetch } = useSupabaseQuery<EventScoringAspect[]>(
+    async () => {
+      const { data, error } = await supabase
         .from('event_scoring_aspects')
         .select('*')
-        .eq('event_id', eventId)
+        .eq('event_id', eventId!)
         .order('order_index', { ascending: true });
 
-      if (fetchError) throw fetchError;
+      if (error) throw error;
+      return data || [];
+    },
+    [eventId],
+    [],
+    { enabled: !!eventId }
+  );
 
-      setAspects(data || []);
-    } catch (err) {
-      console.error('Error fetching scoring aspects:', err);
-      setError('Failed to fetch scoring aspects');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return { aspects, loading, error, refetch: fetchAspects };
-} 
+  return { aspects, loading: isLoading, error, refetch };
+}

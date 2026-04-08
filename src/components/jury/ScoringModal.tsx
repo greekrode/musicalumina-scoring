@@ -95,7 +95,8 @@ export default function ScoringModal({
         .maybeSingle();
 
       if (scoringError) {
-        console.error("Error loading existing score:", scoringError);
+        setError("Failed to load existing score. Please close and try again.");
+        return;
       }
 
       if (scoringData) {

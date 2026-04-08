@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState } from 'react';
 import {
   Calendar,
   MapPin,
@@ -7,20 +7,16 @@ import {
   ToggleRight,
   Settings,
   Award,
-} from "lucide-react";
-import { Event } from "../../types";
-import { supabase } from "../../lib/supabase";
-import ScoringAspectsManager from "./ScoringAspectsManager";
-import PrizeConfigurationManager from "./PrizeConfigurationManager";
-
-interface EventWithCount extends Event {
-  participantCount?: number;
-}
+  EyeOff,
+  Eye,
+} from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { useEvents } from '../../hooks/useEvents';
+import { useSupabaseQuery } from '../../hooks/useSupabaseQuery';
+import ScoringAspectsManager from './ScoringAspectsManager';
+import PrizeConfigurationManager from './PrizeConfigurationManager';
 
 export default function EventsManager() {
-  const [events, setEvents] = useState<EventWithCount[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<{
     id: string;
     title: string;
@@ -29,99 +25,83 @@ export default function EventsManager() {
     id: string;
     title: string;
   } | null>(null);
+  const [hideInactive, setHideInactive] = useState(false);
 
-  // Fetch events from Supabase
-  useEffect(() => {
-    fetchEvents();
-  }, []);
+  // Fetch all events including inactive
+  const { events, loading: eventsLoading, error, refetch } = useEvents({
+    includeInactive: true,
+  });
 
-  const fetchEvents = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // Fetch participant counts in a single query
+  const { data: participantCounts } = useSupabaseQuery<
+    Record<string, number>
+  >(
+    async () => {
+      if (events.length === 0) return {};
 
-      // Fetch events - only competition and festival types, exclude completed
-      const { data: eventsData, error: eventsError } = await supabase
-        .from("events")
-        .select("*")
-        .in("type", ["competition", "festival"])
-        .order("start_date", { ascending: true });
+      const eventIds = events.map((e) => e.id);
+      const { data, error } = await supabase
+        .from('registrations')
+        .select('event_id')
+        .in('event_id', eventIds);
 
-      if (eventsError) throw eventsError;
+      if (error) throw error;
 
-      // Fetch participant counts for each event
-      const eventsWithCounts = await Promise.all(
-        (eventsData || []).map(async (event) => {
-          const { count, error: countError } = await supabase
-            .from("registrations")
-            .select("*", { count: "exact", head: true })
-            .eq("event_id", event.id);
+      const counts: Record<string, number> = {};
+      for (const id of eventIds) counts[id] = 0;
+      data?.forEach((row) => {
+        counts[row.event_id] = (counts[row.event_id] || 0) + 1;
+      });
 
-          if (countError) {
-            console.error("Error fetching participant count:", countError);
-          }
+      return counts;
+    },
+    [events],
+    {},
+    { enabled: events.length > 0 }
+  );
 
-          return {
-            ...event,
-            participantCount: count || 0,
-          };
-        })
-      );
-
-      setEvents(eventsWithCounts);
-    } catch (err) {
-      setError("Failed to fetch events");
-      console.error("Error fetching events:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const filteredEvents = useMemo(
+    () => (hideInactive ? events.filter((e) => e.active) : events),
+    [events, hideInactive]
+  );
 
   const toggleEventActive = async (eventId: string, currentActive: boolean) => {
     try {
       const { error } = await supabase
-        .from("events")
+        .from('events')
         .update({ active: !currentActive })
-        .eq("id", eventId);
+        .eq('id', eventId);
 
       if (error) throw error;
-
-      // Optimistic update
-      setEvents(
-        events.map((event) =>
-          event.id === eventId ? { ...event, active: !currentActive } : event
-        )
-      );
+      refetch();
     } catch (err) {
-      console.error("Error toggling event active status:", err);
-      // Revert on error
-      fetchEvents();
+      console.error('Error toggling event active status:', err);
     }
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "Not set";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
+    if (!dateString) return 'Not set';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
     });
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "upcoming":
-        return "bg-blue-100 text-blue-800";
-      case "ongoing":
-        return "bg-green-100 text-green-800";
-      case "completed":
-        return "bg-gray-100 text-gray-800";
+      case 'upcoming':
+        return 'bg-blue-100 text-blue-800';
+      case 'ongoing':
+        return 'bg-green-100 text-green-800';
+      case 'completed':
+        return 'bg-gray-100 text-gray-800';
       default:
-        return "bg-gray-100 text-gray-800";
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  if (loading) {
+  if (eventsLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-piano-wine"></div>
@@ -134,7 +114,7 @@ export default function EventsManager() {
       <div className="text-center py-12">
         <p className="text-red-600">{error}</p>
         <button
-          onClick={fetchEvents}
+          onClick={refetch}
           className="mt-4 px-4 py-2 bg-piano-wine text-white rounded-lg hover:bg-piano-wine/90"
         >
           Retry
@@ -152,8 +132,22 @@ export default function EventsManager() {
         <p className="text-gray-600">Manage competition and festival events</p>
       </div>
 
+      <div className="mb-4 flex items-center justify-end">
+        <button
+          onClick={() => setHideInactive((prev) => !prev)}
+          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-piano-wine bg-piano-cream hover:bg-piano-gold/20 rounded-lg transition-colors duration-200"
+        >
+          {hideInactive ? (
+            <Eye className="w-4 h-4" />
+          ) : (
+            <EyeOff className="w-4 h-4" />
+          )}
+          {hideInactive ? 'Show Inactive' : 'Hide Inactive'}
+        </button>
+      </div>
+
       <div className="space-y-4">
-        {events.map((event) => (
+        {filteredEvents.map((event) => (
           <div
             key={event.id}
             className="bg-white border border-piano-gold/20 rounded-xl shadow-sm p-6"
@@ -178,16 +172,15 @@ export default function EventsManager() {
                     <MapPin className="w-4 h-4 mr-2 text-piano-wine/60" />
                     {event.location}
                   </div>
-
                   <div className="flex items-center">
                     <Calendar className="w-4 h-4 mr-2 text-piano-wine/60" />
-                    {formatDate(event.start_date)} -{" "}
+                    {formatDate(event.start_date)} -{' '}
                     {formatDate(event.end_date)}
                   </div>
-
                   <div className="flex items-center">
                     <Users className="w-4 h-4 mr-2 text-piano-wine/60" />
-                    Total participants: {event.participantCount || 0}
+                    Total participants:{' '}
+                    {participantCounts[event.id] ?? 0}
                   </div>
                 </div>
 
@@ -203,7 +196,10 @@ export default function EventsManager() {
                   </button>
                   <button
                     onClick={() =>
-                      setPrizeManagerEvent({ id: event.id, title: event.title })
+                      setPrizeManagerEvent({
+                        id: event.id,
+                        title: event.title,
+                      })
                     }
                     className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-piano-wine bg-piano-cream hover:bg-piano-gold/20 rounded-lg transition-colors duration-200"
                   >
@@ -216,17 +212,17 @@ export default function EventsManager() {
               <div className="ml-6 flex items-center">
                 <label className="flex items-center cursor-pointer">
                   <span className="mr-3 text-sm font-medium text-piano-wine">
-                    {event.active ? "Active" : "Inactive"}
+                    {event.active ? 'Active' : 'Inactive'}
                   </span>
                   <button
                     onClick={() => toggleEventActive(event.id, event.active)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      event.active ? "bg-piano-gold" : "bg-gray-300"
+                      event.active ? 'bg-piano-gold' : 'bg-gray-300'
                     }`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        event.active ? "translate-x-6" : "translate-x-1"
+                        event.active ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
                     {event.active ? (
@@ -242,14 +238,16 @@ export default function EventsManager() {
         ))}
       </div>
 
-      {events.length === 0 && (
+      {filteredEvents.length === 0 && (
         <div className="text-center py-12">
           <Calendar className="mx-auto h-12 w-12 text-piano-wine/40" />
           <h3 className="mt-2 text-sm font-medium text-piano-wine">
             No events found
           </h3>
           <p className="mt-1 text-sm text-gray-500">
-            No active competition or festival events available.
+            {hideInactive
+              ? 'No active events. Toggle to show inactive events.'
+              : 'No competition or festival events available.'}
           </p>
         </div>
       )}

@@ -1,43 +1,26 @@
-import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { CategorySubcategory } from '../types';
+import { useSupabaseQuery } from './useSupabaseQuery';
 
 export function useEventCategories(eventId?: string) {
-  const [categories, setCategories] = useState<CategorySubcategory[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchCategories();
-  }, [eventId]);
-
-  const fetchCategories = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // If eventId is provided, use it directly. Otherwise, get all active events
+  const { data: categories, isLoading, error, refetch } = useSupabaseQuery<CategorySubcategory[]>(
+    async () => {
       let eventIds: string[] = [];
-      
+
       if (eventId) {
         eventIds = [eventId];
       } else {
-        // Get active events if no specific eventId provided
         const { data: activeEvents, error: eventsError } = await supabase
           .from('events')
           .select('id')
           .eq('active', true);
 
         if (eventsError) throw eventsError;
-        if (!activeEvents || activeEvents.length === 0) {
-          setCategories([]);
-          return;
-        }
+        if (!activeEvents || activeEvents.length === 0) return [];
 
-        eventIds = activeEvents.map(e => e.id);
+        eventIds = activeEvents.map((e) => e.id);
       }
 
-      // Fetch categories and subcategories for the specified event(s)
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('event_categories')
         .select(`
@@ -56,16 +39,19 @@ export function useEventCategories(eventId?: string) {
 
       if (categoriesError) throw categoriesError;
 
-      // Transform the data into CategorySubcategory format
-      const transformedCategories: CategorySubcategory[] = [];
-      
-      categoriesData?.forEach(category => {
-        const subcategories = category.event_subcategories as any[];
-        // Sort subcategories by order_index
-        const sortedSubcategories = subcategories?.sort((a, b) => a.order_index - b.order_index) || [];
-        
-        sortedSubcategories.forEach(subcategory => {
-          transformedCategories.push({
+      const result: CategorySubcategory[] = [];
+
+      categoriesData?.forEach((category) => {
+        const subcategories = category.event_subcategories as Array<{
+          id: string;
+          name: string;
+          age_requirement: string;
+          order_index: number;
+        }>;
+        const sorted = [...subcategories].sort((a, b) => a.order_index - b.order_index);
+
+        sorted.forEach((subcategory) => {
+          result.push({
             categoryId: category.id,
             subcategoryId: subcategory.id,
             categoryName: category.name,
@@ -77,14 +63,11 @@ export function useEventCategories(eventId?: string) {
         });
       });
 
-      setCategories(transformedCategories);
-    } catch (err) {
-      console.error('Error fetching categories:', err);
-      setError('Failed to fetch categories');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return result;
+    },
+    [eventId],
+    []
+  );
 
-  return { categories, loading, error, refetch: fetchCategories };
-} 
+  return { categories, loading: isLoading, error, refetch };
+}

@@ -1,16 +1,13 @@
-import React, { createContext, useContext, useReducer, useEffect, useState } from "react";
+import React, { createContext, useContext, useReducer, useEffect, useRef, useState } from "react";
 import { useUser, useAuth, useClerk } from "@clerk/clerk-react";
 import { Shield, AlertTriangle } from "lucide-react";
-import { User, Category, Participant, Score } from "../types";
+import { User } from "../types";
 
 interface AppState {
   user: User | null;
   userRole: "admin" | "jury" | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  categories: Category[];
-  participants: Participant[];
-  scores: Score[];
 }
 
 type Action =
@@ -19,26 +16,13 @@ type Action =
       payload: { user: User | null; role: "admin" | "jury" | null };
     }
   | { type: "SET_LOADING"; payload: boolean }
-  | { type: "LOGOUT" }
-  | { type: "SET_CATEGORIES"; payload: Category[] }
-  | { type: "ADD_CATEGORY"; payload: Category }
-  | { type: "UPDATE_CATEGORY"; payload: Category }
-  | { type: "DELETE_CATEGORY"; payload: string }
-  | { type: "SET_PARTICIPANTS"; payload: Participant[] }
-  | { type: "ADD_PARTICIPANT"; payload: Participant }
-  | { type: "UPDATE_PARTICIPANT"; payload: Participant }
-  | { type: "DELETE_PARTICIPANT"; payload: string }
-  | { type: "ADD_SCORE"; payload: Score }
-  | { type: "UPDATE_SCORE"; payload: Score };
+  | { type: "LOGOUT" };
 
 const initialState: AppState = {
   user: null,
   userRole: null,
   isAuthenticated: false,
   isLoading: true,
-  categories: [],
-  participants: [],
-  scores: [],
 };
 
 function appReducer(state: AppState, action: Action): AppState {
@@ -63,50 +47,6 @@ function appReducer(state: AppState, action: Action): AppState {
         userRole: null,
         isAuthenticated: false,
       };
-    case "SET_CATEGORIES":
-      return { ...state, categories: action.payload };
-    case "ADD_CATEGORY":
-      return { ...state, categories: [...state.categories, action.payload] };
-    case "UPDATE_CATEGORY":
-      return {
-        ...state,
-        categories: state.categories.map((cat) =>
-          cat.id === action.payload.id ? action.payload : cat
-        ),
-      };
-    case "DELETE_CATEGORY":
-      return {
-        ...state,
-        categories: state.categories.filter((cat) => cat.id !== action.payload),
-      };
-    case "SET_PARTICIPANTS":
-      return { ...state, participants: action.payload };
-    case "ADD_PARTICIPANT":
-      return {
-        ...state,
-        participants: [...state.participants, action.payload],
-      };
-    case "UPDATE_PARTICIPANT":
-      return {
-        ...state,
-        participants: state.participants.map((p) =>
-          p.id === action.payload.id ? action.payload : p
-        ),
-      };
-    case "DELETE_PARTICIPANT":
-      return {
-        ...state,
-        participants: state.participants.filter((p) => p.id !== action.payload),
-      };
-    case "ADD_SCORE":
-      return { ...state, scores: [...state.scores, action.payload] };
-    case "UPDATE_SCORE":
-      return {
-        ...state,
-        scores: state.scores.map((score) =>
-          score.id === action.payload.id ? action.payload : score
-        ),
-      };
     default:
       return state;
   }
@@ -126,6 +66,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const { orgRole } = useAuth();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [authError, setAuthError] = useState<string>('');
+  const signOutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const checkUserAccess = async () => {
@@ -189,9 +130,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // Not authorized
           setIsAuthorized(false);
           setAuthError('Access denied: You must be an admin or jury member to use this application.');
-          
+
           // Force logout after showing error message
-          setTimeout(() => {
+          signOutTimerRef.current = setTimeout(() => {
             signOut();
           }, 3000);
         }
@@ -199,8 +140,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error('Authorization check error:', error);
         setIsAuthorized(false);
         setAuthError('Error checking authorization. Please try again.');
-        
-        setTimeout(() => {
+
+        signOutTimerRef.current = setTimeout(() => {
           signOut();
         }, 3000);
       }
@@ -208,6 +149,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     checkUserAccess();
   }, [clerkUser, isLoaded, isSignedIn, orgRole, signOut]);
+
+  // Clear sign-out timer on unmount
+  useEffect(() => {
+    return () => {
+      if (signOutTimerRef.current) {
+        clearTimeout(signOutTimerRef.current);
+      }
+    };
+  }, []);
 
   // Loading state while checking authorization
   if (isLoaded && clerkUser && isAuthorized === null) {

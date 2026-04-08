@@ -1,139 +1,120 @@
-import { Calendar, Clock, FileText, History, Search, User } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useApp } from "../../context/AppContext";
-import { useEventCategories } from "../../hooks/useEventCategories";
-import { useEvents } from "../../hooks/useEvents";
-import { useRealtimeScoring } from "../../hooks/useRealtimeScoring";
+import { Calendar, Clock, FileText, History, Search, User } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useEventCategories } from '../../hooks/useEventCategories';
+import { useEvents } from '../../hooks/useEvents';
+import { useRealtimeScoring } from '../../hooks/useRealtimeScoring';
+import { useSupabaseQuery } from '../../hooks/useSupabaseQuery';
 import {
   formatHistoryEntry,
   getScoringHistory,
-} from "../../lib/scoringHistory";
-import { EventScoringHistory } from "../../types";
+} from '../../lib/scoringHistory';
+import { EventScoringHistory } from '../../types';
 
 export default function ScoringHistory() {
-  const { state } = useApp();
-  const [selectedEventId, setSelectedEventId] = useState<string>("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedOperation, setSelectedOperation] = useState<string>("all");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedJury, setSelectedJury] = useState<string>("all");
-  const [historyEntries, setHistoryEntries] = useState<EventScoringHistory[]>(
-    []
-  );
-  const [loading, setLoading] = useState(true);
+  const [selectedEventId, setSelectedEventId] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedOperation, setSelectedOperation] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedJury, setSelectedJury] = useState('all');
 
   const { events, loading: eventsLoading } = useEvents();
   const { categories } = useEventCategories(selectedEventId);
 
-  // Auto-select the most recent active event when events are loaded
+  // Auto-select the most recent active event
   useEffect(() => {
     if (!eventsLoading && events.length > 0 && !selectedEventId) {
       setSelectedEventId(events[0].id);
     }
   }, [events, eventsLoading, selectedEventId]);
 
-  // Reset other filters when event changes
+  // Reset filters when event changes
   useEffect(() => {
-    setSelectedCategory("all");
-    setSelectedJury("all");
-    setHistoryEntries([]);
+    setSelectedCategory('all');
+    setSelectedJury('all');
   }, [selectedEventId]);
 
-  // Fetch history data when filters change (but only if event is selected)
-  useEffect(() => {
-    if (selectedEventId) {
-      fetchHistory();
-    } else {
-      setHistoryEntries([]);
-      setLoading(false);
-    }
-  }, [selectedEventId, selectedOperation, selectedCategory, selectedJury]);
+  // Fetch history with useSupabaseQuery
+  const { data: historyEntries, isLoading: loading, refetch: refetchHistory } =
+    useSupabaseQuery<EventScoringHistory[]>(
+      async () => {
+        const filters: { eventId: string; changedBy?: string } = {
+          eventId: selectedEventId,
+        };
+        if (selectedJury !== 'all') {
+          filters.changedBy = selectedJury;
+        }
 
-  // Set up realtime subscriptions for history changes
+        let history = await getScoringHistory(filters);
+
+        // Filter by operation type
+        if (selectedOperation !== 'all') {
+          history = history.filter(
+            (entry) => entry.operation === selectedOperation
+          );
+        }
+
+        // Filter by category
+        if (selectedCategory !== 'all') {
+          const [catId, subId] = selectedCategory.split('|');
+          history = history.filter(
+            (entry) =>
+              entry.category_id === catId && entry.subcategory_id === subId
+          );
+        }
+
+        return history;
+      },
+      [selectedEventId, selectedOperation, selectedCategory, selectedJury],
+      [],
+      { enabled: !!selectedEventId }
+    );
+
+  // Set up realtime subscriptions
   useRealtimeScoring({
     eventId: selectedEventId,
     categoryId:
-      selectedCategory !== "all" ? selectedCategory.split("|")[0] : undefined,
+      selectedCategory !== 'all' ? selectedCategory.split('|')[0] : undefined,
     subcategoryId:
-      selectedCategory !== "all" ? selectedCategory.split("|")[1] : undefined,
-    onScoringChange: () => {
-      // Don't refresh on scoring changes in history view - we only care about history changes
-    },
+      selectedCategory !== 'all' ? selectedCategory.split('|')[1] : undefined,
+    onScoringChange: () => {},
     onHistoryChange: () => {
-      // Refresh history when new history entries are added
-      if (selectedEventId) {
-        fetchHistory();
-      }
+      if (selectedEventId) refetchHistory();
     },
     enabled: !!selectedEventId,
   });
 
-  const fetchHistory = async () => {
-    setLoading(true);
-    try {
-      const filters: any = { eventId: selectedEventId };
-      if (selectedJury !== "all") {
-        filters.changedBy = selectedJury;
-      }
+  // Filter by search term
+  const filteredEntries = useMemo(() => {
+    if (!searchTerm) return historyEntries;
 
-      let history = await getScoringHistory(filters);
+    const term = searchTerm.toLowerCase();
+    return historyEntries.filter((entry) => {
+      const { title, description } = formatHistoryEntry(entry);
+      return (
+        title.toLowerCase().includes(term) ||
+        description.toLowerCase().includes(term) ||
+        (entry.participant_name || '').toLowerCase().includes(term) ||
+        (entry.jury_name || '').toLowerCase().includes(term)
+      );
+    });
+  }, [historyEntries, searchTerm]);
 
-      // Filter by operation type
-      if (selectedOperation !== "all") {
-        history = history.filter(
-          (entry) => entry.operation === selectedOperation
-        );
-      }
-
-      // Filter by category
-      if (selectedCategory !== "all") {
-        const [categoryId, subcategoryId] = selectedCategory.split("|");
-        history = history.filter(
-          (entry) =>
-            entry.category_id === categoryId &&
-            entry.subcategory_id === subcategoryId
-        );
-      }
-
-      setHistoryEntries(history);
-    } catch (err) {
-      console.error("Error fetching history:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Filter entries based on search
-  const filteredEntries = historyEntries.filter((entry) => {
-    if (!searchTerm) return true;
-
-    const { title, description } = formatHistoryEntry(entry);
-    return (
-      title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (entry.participant_name || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      (entry.jury_name || "").toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
-
-  // Get unique jury members from history
-  const uniqueJury = Array.from(
-    new Set(historyEntries.map((entry) => entry.changed_by))
+  // Unique jury members
+  const uniqueJury = useMemo(
+    () => Array.from(new Set(historyEntries.map((entry) => entry.changed_by))),
+    [historyEntries]
   );
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleString();
 
   const getOperationIcon = (operation: string) => {
     switch (operation) {
-      case "INSERT":
+      case 'INSERT':
         return <FileText className="w-4 h-4 text-green-600" />;
-      case "UPDATE":
+      case 'UPDATE':
         return <History className="w-4 h-4 text-blue-600" />;
-      case "DELETE":
+      case 'DELETE':
         return <FileText className="w-4 h-4 text-red-600" />;
       default:
         return <FileText className="w-4 h-4 text-gray-600" />;
@@ -142,14 +123,14 @@ export default function ScoringHistory() {
 
   const getOperationColor = (operation: string) => {
     switch (operation) {
-      case "INSERT":
-        return "bg-green-100 text-green-800";
-      case "UPDATE":
-        return "bg-blue-100 text-blue-800";
-      case "DELETE":
-        return "bg-red-100 text-red-800";
+      case 'INSERT':
+        return 'bg-green-100 text-green-800';
+      case 'UPDATE':
+        return 'bg-blue-100 text-blue-800';
+      case 'DELETE':
+        return 'bg-red-100 text-red-800';
       default:
-        return "bg-gray-100 text-gray-800";
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -174,7 +155,7 @@ export default function ScoringHistory() {
         </div>
       </div>
 
-      {/* Event Selection - Required First Step */}
+      {/* Event Selection */}
       <div className="bg-white rounded-xl shadow-sm border border-piano-gold/20 p-6 mb-6">
         <div className="flex items-center">
           <div className="flex-1">
@@ -322,26 +303,26 @@ export default function ScoringHistory() {
                               className="flex items-center justify-between p-3 bg-piano-cream/50 rounded-lg"
                             >
                               <span className="text-sm font-medium text-gray-700 capitalize">
-                                {change.field.replace("_", " ")}
+                                {change.field.replace('_', ' ')}
                               </span>
                               <div className="flex items-center space-x-2 text-sm">
                                 {change.before !== null && (
                                   <>
                                     <span className="text-red-600">
-                                      {typeof change.before === "boolean"
+                                      {typeof change.before === 'boolean'
                                         ? change.before
-                                          ? "true"
-                                          : "false"
+                                          ? 'true'
+                                          : 'false'
                                         : change.before}
                                     </span>
                                     <span className="text-gray-400">→</span>
                                   </>
                                 )}
                                 <span className="text-green-600 font-medium">
-                                  {typeof change.after === "boolean"
+                                  {typeof change.after === 'boolean'
                                     ? change.after
-                                      ? "true"
-                                      : "false"
+                                      ? 'true'
+                                      : 'false'
                                     : change.after}
                                 </span>
                               </div>
@@ -364,8 +345,8 @@ export default function ScoringHistory() {
               </h3>
               <p className="mt-1 text-sm text-gray-500">
                 {historyEntries.length === 0
-                  ? "No scoring activities have been recorded for this event yet."
-                  : "Try adjusting your search criteria or filters."}
+                  ? 'No scoring activities have been recorded for this event yet.'
+                  : 'Try adjusting your search criteria or filters.'}
               </p>
             </div>
           )}

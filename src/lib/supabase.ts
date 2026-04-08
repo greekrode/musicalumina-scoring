@@ -4,7 +4,13 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
+});
 
 // Database types
 export type Database = {
@@ -14,13 +20,13 @@ export type Database = {
         Row: {
           id: string;
           title: string;
-          description?: any;
+          description?: string | null;
           start_date?: string;
           end_date?: string;
           registration_deadline?: string;
           location: string;
           venue_details?: string;
-          terms_and_conditions?: any;
+          terms_and_conditions?: string | null;
           created_at?: string;
           updated_at?: string;
           type: 'competition' | 'masterclass' | 'group_class' | 'mixed';
@@ -41,7 +47,7 @@ export type Database = {
           name: string;
           description?: string;
           created_at?: string;
-          repertoire?: any;
+          repertoire?: string | null;
           order_index?: number;
           updated_at?: string;
         };
@@ -51,7 +57,7 @@ export type Database = {
           id: string;
           category_id?: string;
           name: string;
-          repertoire?: any;
+          repertoire?: string | null;
           performance_duration?: string;
           requirements?: string;
           created_at?: string;
@@ -60,8 +66,8 @@ export type Database = {
           order_index: number;
           updated_at?: string;
           final_registration_fee?: number;
-          foreign_registration_fee?: any;
-          foreign_final_registration_fee?: any;
+          foreign_registration_fee?: number | null;
+          foreign_final_registration_fee?: number | null;
         };
       };
       event_jury: {
@@ -72,7 +78,7 @@ export type Database = {
           title: string;
           description?: string;
           avatar_url?: string;
-          credentials?: any;
+          credentials?: string | null;
           created_at?: string;
         };
       };
