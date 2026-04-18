@@ -40,6 +40,10 @@ export const calculatePrizeAssignments = (
   const participantsWithoutScores = baseParticipants.filter((participant) => participant.scoreCount === 0);
 
   if (!eligibleParticipants.length) {
+    participantsWithoutScores.forEach((participant) => {
+      participant.prizeLevel = undefined;
+      participant.prizeDisplayOrder = undefined;
+    });
     return {
       prizeAssignments: [],
       assignedParticipants: [...participantsWithoutScores],

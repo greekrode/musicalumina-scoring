@@ -51,19 +51,25 @@ const ResultRow = React.memo(function ResultRow({
   onEditScores,
   onViewRemarks,
 }: ResultRowProps) {
-  const isAssigned = 'prizeLevel' in participant;
-  const prizeLevel = isAssigned ? participant.prizeLevel : undefined;
-  const displayOrder = isAssigned ? participant.prizeDisplayOrder : undefined;
-  const participantName = isAssigned
-    ? participant.participant_name
-    : (participant as ParticipantWithScores).fullName;
+  // ParticipantWithPrize uses participant_name; ParticipantWithScores uses fullName.
+  // Do not use `'prizeLevel' in participant` — prize rows may omit that key (e.g. no
+  // scores yet while prize configs exist), which incorrectly picked fullName and showed blank names.
+  const isPrizeTableRow = 'participant_name' in participant;
+  const prizeLevel = isPrizeTableRow ? participant.prizeLevel : undefined;
+  const displayOrder = isPrizeTableRow ? participant.prizeDisplayOrder : undefined;
+  const participantName =
+    'fullName' in participant && participant.fullName
+      ? participant.fullName
+      : 'participant_name' in participant
+        ? participant.participant_name
+        : '';
   const score = participant.averageScore;
   const scoreCount = participant.scoreCount;
   const piece = participant.piece;
   const duration = participant.duration;
   const juryScores = participant.juryScores;
   const participantId = participant.id;
-  const category = isAssigned
+  const category = isPrizeTableRow
     ? ''
     : (participant as ParticipantWithScores).category;
 
