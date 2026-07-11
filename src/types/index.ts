@@ -123,7 +123,7 @@ export interface Registration {
   song_title?: string;
   song_duration?: string;
   birth_certificate_url?: string;
-  song_pdf_url?: string;
+  song_pdf_url?: string | string[];
   bank_name: string;
   bank_account_number: string;
   bank_account_name: string;
@@ -224,6 +224,7 @@ export interface ParticipantWithPrize {
   piece: string;
   duration: string;
   videoUrl?: string;
+  repertoireUrl?: string;
   juryScores: Array<{ name: string; score: number }>;
   prizeLevel?: string; // The prize they won
   prizeDisplayOrder?: number; // For sorting by prize level

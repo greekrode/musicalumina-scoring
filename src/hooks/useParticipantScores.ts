@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { CategorySubcategory, Registration } from '../types';
 import { ParticipantWithScores } from '../types/results';
-import { normalizeExternalUrl } from '../utils/url';
+import { normalizeExternalUrl, normalizeRepertoireUrl } from '../utils/url';
 import { useSupabaseQuery } from './useSupabaseQuery';
 
 interface UseParticipantScoresOptions {
@@ -132,6 +132,7 @@ export function useParticipantScores({
             piece: participant.song_title || 'Not specified',
             duration: participant.song_duration || 'Not specified',
             videoUrl: normalizeExternalUrl(participant.video_url),
+            repertoireUrl: normalizeRepertoireUrl(participant.song_pdf_url),
             aspectScores: {},
             isFinalized,
             juryScores,

@@ -14,7 +14,8 @@ import { useSongs } from '../../hooks/useSongs';
 import { useSupabaseQuery } from '../../hooks/useSupabaseQuery';
 import { supabase } from '../../lib/supabase';
 import { Registration } from '../../types';
-import { normalizeExternalUrl } from '../../utils/url';
+import { normalizeExternalUrl, normalizeRepertoireUrl } from '../../utils/url';
+import ViewRepertoireLink from '../shared/ViewRepertoireLink';
 import WatchVideoLink from '../shared/WatchVideoLink';
 import ScoringModal from './ScoringModal';
 
@@ -43,6 +44,7 @@ const ParticipantRow = React.memo(function ParticipantRow({
   const hasScore = scoreData?.hasScore || false;
   const status = hasScore ? 'completed' : 'pending';
   const videoUrl = normalizeExternalUrl(participant.video_url);
+  const repertoireUrl = normalizeRepertoireUrl(participant.song_pdf_url);
 
   return (
     <tr className="hover:bg-piano-cream/30 transition-colors duration-150">
@@ -74,6 +76,9 @@ const ParticipantRow = React.memo(function ParticipantRow({
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <WatchVideoLink videoUrl={videoUrl} />
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <ViewRepertoireLink repertoireUrl={repertoireUrl} />
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <span
@@ -329,6 +334,9 @@ export default function JuryInterface() {
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
                         Video
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
+                        Repertoire
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
                         Status

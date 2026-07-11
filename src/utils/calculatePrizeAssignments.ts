@@ -13,6 +13,7 @@ const mapParticipantsToPrizeFormat = (
       piece: participant.piece,
       duration: participant.duration,
       videoUrl: participant.videoUrl,
+      repertoireUrl: participant.repertoireUrl,
       juryScores: participant.juryScores,
       isFinalized: participant.isFinalized,
     }))

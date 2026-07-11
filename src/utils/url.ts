@@ -15,3 +15,15 @@ export function normalizeExternalUrl(
     ? trimmed
     : `https://${trimmed}`;
 }
+
+/**
+ * Normalize a repertoire PDF URL. Registrations store `song_pdf_url` as a text
+ * array (occasionally a bare string), so this picks the first entry and applies
+ * {@link normalizeExternalUrl}.
+ */
+export function normalizeRepertoireUrl(
+  value?: string | string[] | null
+): string | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return normalizeExternalUrl(raw);
+}

@@ -27,6 +27,7 @@ import { useParticipantScores } from '../../hooks/useParticipantScores';
 import { supabase } from '../../lib/supabase';
 import { ParticipantWithPrize } from '../../types';
 import { ParticipantWithScores } from '../../types/results';
+import ViewRepertoireLink from '../shared/ViewRepertoireLink';
 import WatchVideoLink from '../shared/WatchVideoLink';
 import EditScoresModal from './EditScoresModal';
 import RemarksModal from './RemarksModal';
@@ -71,6 +72,7 @@ const ResultRow = React.memo(function ResultRow({
   const juryScores = participant.juryScores;
   const participantId = participant.id;
   const videoUrl = participant.videoUrl;
+  const repertoireUrl = participant.repertoireUrl;
   const category = isPrizeTableRow
     ? ''
     : (participant as ParticipantWithScores).category;
@@ -120,6 +122,9 @@ const ResultRow = React.memo(function ResultRow({
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <WatchVideoLink videoUrl={videoUrl} />
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <ViewRepertoireLink repertoireUrl={repertoireUrl} />
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="text-lg font-bold text-piano-wine">
@@ -685,6 +690,9 @@ export default function ResultsOverview() {
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
                           Video
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
+                          Repertoire
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
                           <div className="flex items-center space-x-2">
