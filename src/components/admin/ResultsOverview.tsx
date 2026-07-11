@@ -27,6 +27,7 @@ import { useParticipantScores } from '../../hooks/useParticipantScores';
 import { supabase } from '../../lib/supabase';
 import { ParticipantWithPrize } from '../../types';
 import { ParticipantWithScores } from '../../types/results';
+import WatchVideoLink from '../shared/WatchVideoLink';
 import EditScoresModal from './EditScoresModal';
 import RemarksModal from './RemarksModal';
 import FinalizeModal from './FinalizeModal';
@@ -69,6 +70,7 @@ const ResultRow = React.memo(function ResultRow({
   const duration = participant.duration;
   const juryScores = participant.juryScores;
   const participantId = participant.id;
+  const videoUrl = participant.videoUrl;
   const category = isPrizeTableRow
     ? ''
     : (participant as ParticipantWithScores).category;
@@ -115,6 +117,9 @@ const ResultRow = React.memo(function ResultRow({
           <Clock className="w-3 h-3 mr-1" />
           {duration !== 'Not specified' ? duration : '--'}
         </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <WatchVideoLink videoUrl={videoUrl} />
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="text-lg font-bold text-piano-wine">
@@ -677,6 +682,9 @@ export default function ResultsOverview() {
                         )}
                         <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
                           Performance Piece
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
+                          Video
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
                           <div className="flex items-center space-x-2">
