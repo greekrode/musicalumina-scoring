@@ -8,7 +8,6 @@ import {
   Lock,
   Medal,
   MessageSquare,
-  PlayCircle,
   RefreshCw,
   Star,
   Trophy,
@@ -28,6 +27,7 @@ import { useParticipantScores } from '../../hooks/useParticipantScores';
 import { supabase } from '../../lib/supabase';
 import { ParticipantWithPrize } from '../../types';
 import { ParticipantWithScores } from '../../types/results';
+import WatchVideoLink from '../shared/WatchVideoLink';
 import EditScoresModal from './EditScoresModal';
 import RemarksModal from './RemarksModal';
 import FinalizeModal from './FinalizeModal';
@@ -119,20 +119,7 @@ const ResultRow = React.memo(function ResultRow({
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
-        {videoUrl ? (
-          <a
-            href={videoUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-piano-gold/10 text-piano-wine border border-piano-gold/30 hover:bg-piano-gold/20 focus:ring-2 focus:ring-piano-gold focus:ring-offset-2 transition-colors"
-            title="Open performance video in a new tab"
-          >
-            <PlayCircle className="w-4 h-4 mr-1" />
-            Watch Video
-          </a>
-        ) : (
-          <span className="text-sm text-gray-400">--</span>
-        )}
+        <WatchVideoLink videoUrl={videoUrl} />
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="text-lg font-bold text-piano-wine">
