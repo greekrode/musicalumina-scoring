@@ -223,6 +223,7 @@ export interface ParticipantWithPrize {
   scoreCount: number;
   piece: string;
   duration: string;
+  videoUrl?: string;
   juryScores: Array<{ name: string; score: number }>;
   prizeLevel?: string; // The prize they won
   prizeDisplayOrder?: number; // For sorting by prize level

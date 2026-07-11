@@ -7,6 +7,7 @@ export interface ParticipantWithScores {
   category: string;
   piece: string;
   duration: string;
+  videoUrl?: string;
   aspectScores: Record<string, { score: number; weight: number; name: string }>;
   isFinalized: boolean;
   juryScores: Array<{

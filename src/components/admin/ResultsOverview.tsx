@@ -8,6 +8,7 @@ import {
   Lock,
   Medal,
   MessageSquare,
+  PlayCircle,
   RefreshCw,
   Star,
   Trophy,
@@ -69,6 +70,7 @@ const ResultRow = React.memo(function ResultRow({
   const duration = participant.duration;
   const juryScores = participant.juryScores;
   const participantId = participant.id;
+  const videoUrl = participant.videoUrl;
   const category = isPrizeTableRow
     ? ''
     : (participant as ParticipantWithScores).category;
@@ -115,6 +117,22 @@ const ResultRow = React.memo(function ResultRow({
           <Clock className="w-3 h-3 mr-1" />
           {duration !== 'Not specified' ? duration : '--'}
         </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        {videoUrl ? (
+          <a
+            href={videoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-piano-gold/10 text-piano-wine border border-piano-gold/30 hover:bg-piano-gold/20 focus:ring-2 focus:ring-piano-gold focus:ring-offset-2 transition-colors"
+            title="Open performance video in a new tab"
+          >
+            <PlayCircle className="w-4 h-4 mr-1" />
+            Watch Video
+          </a>
+        ) : (
+          <span className="text-sm text-gray-400">--</span>
+        )}
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="text-lg font-bold text-piano-wine">
@@ -677,6 +695,9 @@ export default function ResultsOverview() {
                         )}
                         <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
                           Performance Piece
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
+                          Video
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
                           <div className="flex items-center space-x-2">

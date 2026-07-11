@@ -4,6 +4,7 @@ import {
   Clock,
   Filter,
   Pen,
+  PlayCircle,
   Search,
 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
@@ -14,6 +15,7 @@ import { useSongs } from '../../hooks/useSongs';
 import { useSupabaseQuery } from '../../hooks/useSupabaseQuery';
 import { supabase } from '../../lib/supabase';
 import { Registration } from '../../types';
+import { normalizeExternalUrl } from '../../utils/url';
 import ScoringModal from './ScoringModal';
 
 interface ParticipantScoreData {
@@ -40,6 +42,7 @@ const ParticipantRow = React.memo(function ParticipantRow({
 }: ParticipantRowProps) {
   const hasScore = scoreData?.hasScore || false;
   const status = hasScore ? 'completed' : 'pending';
+  const videoUrl = normalizeExternalUrl(participant.video_url);
 
   return (
     <tr className="hover:bg-piano-cream/30 transition-colors duration-150">
@@ -67,6 +70,22 @@ const ParticipantRow = React.memo(function ParticipantRow({
           </div>
         ) : (
           <div className="text-sm text-gray-400">--</div>
+        )}
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        {videoUrl ? (
+          <a
+            href={videoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-piano-gold/10 text-piano-wine border border-piano-gold/30 hover:bg-piano-gold/20 focus:ring-2 focus:ring-piano-gold focus:ring-offset-2 transition-colors"
+            title="Open performance video in a new tab"
+          >
+            <PlayCircle className="w-4 h-4 mr-1" />
+            Watch Video
+          </a>
+        ) : (
+          <span className="text-sm text-gray-400">--</span>
         )}
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
@@ -320,6 +339,9 @@ export default function JuryInterface() {
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
                         Duration
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
+                        Video
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
                         Status

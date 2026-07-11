@@ -5,6 +5,7 @@ import { Participant, Registration } from "../../types";
 import { supabase } from "../../lib/supabase";
 import { useScoringAspects } from "../../hooks/useScoringAspects";
 import { logScoringHistory } from "../../lib/scoringHistory";
+import { normalizeExternalUrl } from "../../utils/url";
 
 interface ScoringModalProps {
   participant: Participant | Registration;
@@ -54,11 +55,7 @@ export default function ScoringModal({
   // Derive video URL when available (only present on Registration type)
   const rawVideoUrl =
     "participant_name" in participant ? participant.video_url : undefined;
-  const normalizedVideoUrl = rawVideoUrl
-    ? rawVideoUrl.startsWith("http://") || rawVideoUrl.startsWith("https://")
-      ? rawVideoUrl
-      : `https://${rawVideoUrl}`
-    : undefined;
+  const normalizedVideoUrl = normalizeExternalUrl(rawVideoUrl);
 
   // Derive repertoire PDF URL (supports string or single-item array)
   const rawSongPdf =
@@ -68,11 +65,7 @@ export default function ScoringModal({
     : typeof rawSongPdf === "string"
     ? rawSongPdf
     : undefined;
-  const normalizedPdfUrl = rawPdfUrl
-    ? rawPdfUrl.startsWith("http://") || rawPdfUrl.startsWith("https://")
-      ? rawPdfUrl
-      : `https://${rawPdfUrl}`
-    : undefined;
+  const normalizedPdfUrl = normalizeExternalUrl(rawPdfUrl);
 
   const { aspects, loading: aspectsLoading } = useScoringAspects(
     category.eventId
