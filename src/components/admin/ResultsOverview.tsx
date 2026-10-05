@@ -33,6 +33,7 @@ import { Eyebrow } from '../shared/StateCard';
 import EditScoresModal from './EditScoresModal';
 import RemarksModal from './RemarksModal';
 import FinalizeModal from './FinalizeModal';
+import ResultsCapture from './ResultsCapture';
 
 // --- Memoized row component ---
 interface ResultRowProps {
@@ -596,6 +597,22 @@ export default function ResultsOverview({ readOnly = false }: { readOnly?: boole
                   <Download className="h-4 w-4" />
                   {exporting ? 'Exporting...' : 'Export CSV'}
                 </button>
+                <ResultsCapture
+                  eventTitle={events.find((e) => e.id === selectedEventId)?.title ?? ''}
+                  categoryName={
+                    categories.find((c) => `${c.categoryId}|${c.subcategoryId}` === selectedCategoryCombo)?.displayName ?? ''
+                  }
+                  rows={displayParticipants.map((p) => ({
+                    name: 'fullName' in p ? p.fullName : p.participant_name,
+                    piece: p.piece,
+                    score: p.averageScore,
+                    scoreCount: p.scoreCount,
+                    prizeLevel: 'prizeLevel' in p ? p.prizeLevel : undefined,
+                    prizeOrder: 'prizeDisplayOrder' in p ? p.prizeDisplayOrder : undefined,
+                  }))}
+                  hideScores={hideScores}
+                  onDone={showToast}
+                />
                 {!readOnly && (
                   <button
                     onClick={() => setFinalizeModalOpen(true)}
