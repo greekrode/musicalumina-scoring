@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
 import { ParticipantWithScores } from '../../types/results';
 import { Eyebrow } from '../shared/StateCard';
@@ -11,36 +12,45 @@ interface EditScoresModalProps {
   onError: (message: string) => void;
 }
 
+const REJECT: Record<string, string> = {
+  forbidden: 'Only admins can adjust scores.',
+  invalid_score: 'Each score must be between 0.1 and 100 with at most one decimal.',
+  invalid_request: 'Could not save these changes. Please try again.',
+};
+
+// Same rule as the jury form: one decimal, clamped to 0-100.
+const normalize = (value: string) => {
+  const num = parseFloat(value);
+  return isNaN(num) ? undefined : Math.max(0, Math.min(100, Math.round(num * 10) / 10));
+};
+
 export default function EditScoresModal({
   participant,
   onClose,
   onSaved,
   onError,
 }: EditScoresModalProps) {
-  const [editedScores, setEditedScores] = useState(
+  const { state } = useApp();
+  const [editedScores, setEditedScores] = useState<Array<{ id: string; juryId: string; name: string; score: number | undefined }>>(
     participant.juryScores.map((s) => ({ ...s }))
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleScoreChange = (scoreId: string, value: string) => {
+    setError(null);
     setEditedScores((prev) =>
-      prev.map((score) => {
-        if (score.id !== scoreId) return score;
-        let parsed = parseFloat(value);
-        if (isNaN(parsed)) parsed = 0;
-        return { ...score, score: Math.max(0, Math.min(100, parsed)) };
-      })
+      prev.map((score) => (score.id === scoreId ? { ...score, score: value === '' ? undefined : normalize(value) } : score))
     );
   };
 
   const handleSave = async () => {
-    const originalMap = new Map(
-      participant.juryScores.map((s) => [s.id, s.score])
-    );
-    const updates = editedScores.filter(
-      (s) => originalMap.get(s.id) !== s.score
-    );
+    if (editedScores.some((s) => s.score === undefined || s.score <= 0)) {
+      setError('Enter a score between 0.1 and 100 for every jury.');
+      return;
+    }
+    const originalMap = new Map(participant.juryScores.map((s) => [s.id, s.score]));
+    const updates = editedScores.filter((s) => originalMap.get(s.id) !== s.score);
 
     if (updates.length === 0) {
       onClose();
@@ -51,24 +61,19 @@ export default function EditScoresModal({
     setError(null);
 
     try {
-      const timestamp = new Date().toISOString();
-      const results = await Promise.all(
-        updates.map((score) =>
-          supabase
-            .from('event_scoring')
-            .update({ final_score: score.score, updated_at: timestamp })
-            .eq('id', score.id)
-        )
-      );
-
-      const updateError = results.find((r) => r.error)?.error;
-      if (updateError) throw updateError;
+      // One transaction: validates, updates and writes the History entries.
+      const { data, error } = await supabase.rpc('admin_update_scores', {
+        p_updates: updates.map((s) => ({ id: s.id, final_score: s.score })),
+        p_admin_name: state.user?.name ?? 'Admin',
+      });
+      if (error) throw error;
+      const code = (data as { error?: string } | null)?.error;
+      if (code) throw new Error(REJECT[code] ?? code);
 
       onSaved();
       onClose();
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to update jury scores.';
+      const message = err instanceof Error ? err.message : 'Failed to update jury scores.';
       setError(message);
       onError(message);
     } finally {
@@ -114,7 +119,9 @@ export default function EditScoresModal({
                     min="0"
                     max="100"
                     step="0.1"
-                    value={juryScore.score}
+                    inputMode="decimal"
+                    aria-label={`Score from ${juryScore.name}`}
+                    value={juryScore.score ?? ''}
                     onChange={(e) =>
                       handleScoreChange(juryScore.id, e.target.value)
                     }
@@ -125,6 +132,7 @@ export default function EditScoresModal({
               </div>
             ))
           )}
+          <p className="text-xs text-ink-muted">One decimal place, e.g. 85.5. Every change is recorded in History under your name.</p>
           {error && <p className="text-sm text-status-error-fg">{error}</p>}
         </div>
         <div className="flex flex-wrap justify-end gap-3 border-t border-rule-hairline bg-surface-warm px-6 py-4">

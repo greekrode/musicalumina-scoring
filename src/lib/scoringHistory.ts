@@ -73,8 +73,13 @@ export function formatHistoryEntry(entry: EventScoringHistory): {
         });
       }
     } else if (entry.operation === 'UPDATE') {
-      title = `Score Updated`;
-      description = `${jury} updated the score for ${participant}`;
+      if (entry.after_data?.edited_by_admin) {
+        title = `Score Adjusted by Admin`;
+        description = `${jury} adjusted ${entry.after_data.jury_name || 'a jury'}'s score for ${participant}`;
+      } else {
+        title = `Score Updated`;
+        description = `${jury} updated the score for ${participant}`;
+      }
       
       if (entry.before_data && entry.after_data) {
         meaningfulFields.forEach(field => {
