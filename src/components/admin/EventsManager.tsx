@@ -42,7 +42,7 @@ export default function EventsManager() {
 
       const eventIds = events.map((e) => e.id);
       const { data, error } = await supabase
-        .from('registrations')
+        .from('scoring_registrations')
         .select('event_id')
         .in('event_id', eventIds);
 

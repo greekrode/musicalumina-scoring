@@ -31,7 +31,7 @@ export function useParticipantScores({
       // If "all categories" is selected, fetch participants from all categories in the event
       if (selectedCategoryCombo === 'all' && selectedEventId) {
         const { data: allParticipants, error: participantsError } = await supabase
-          .from('registrations')
+          .from('scoring_registrations')
           .select('*')
           .eq('event_id', selectedEventId)
           .order('created_at', { ascending: true });

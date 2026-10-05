@@ -2,9 +2,9 @@ import { supabase } from '../lib/supabase';
 import { Registration } from '../types';
 import { useSupabaseQuery } from './useSupabaseQuery';
 
-// What the jury scoresheet shows. Jury lists are kept on the device for
-// offline use, so they never include contact, payment or document fields.
-const JURY_COLUMNS =
+// scoring_registrations (a view) carries only these columns: no contact,
+// payment or document fields, so lists are also safe to keep on jury devices.
+const COLUMNS =
   'id, event_id, category_id, subcategory_id, participant_name, song_title, song_duration, song_pdf_url, video_url, status, created_at';
 
 export function useParticipants(categoryId?: string, subcategoryId?: string, options?: { jury?: boolean }) {
@@ -12,8 +12,8 @@ export function useParticipants(categoryId?: string, subcategoryId?: string, opt
   const { data: participants, isLoading, error, refetch } = useSupabaseQuery<Registration[]>(
     async () => {
       const { data, error } = await supabase
-        .from('registrations')
-        .select(jury ? JURY_COLUMNS : '*')
+        .from('scoring_registrations')
+        .select(COLUMNS)
         .eq('category_id', categoryId!)
         .eq('subcategory_id', subcategoryId!)
         .order('order_index', { ascending: true });
