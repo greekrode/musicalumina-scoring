@@ -40,7 +40,7 @@ function SyncStatus() {
 
 export default function Header() {
   const { state } = useApp();
-  const { user, userRole } = state;
+  const { user, userRole, offline } = state;
 
   return (
     <header className="sticky top-0 z-40 border-b border-rule-hairline bg-surface-canvas/85 backdrop-blur-md">
@@ -55,7 +55,7 @@ export default function Header() {
         <div className="flex items-center gap-3">
           {userRole === "jury" && <SyncStatus />}
           <span className="hidden text-[0.875rem] text-ink-muted md:inline">{user?.name}</span>
-          <UserButton />
+          {offline ? <span className="pill-muted">Offline mode</span> : <UserButton />}
         </div>
       </div>
     </header>

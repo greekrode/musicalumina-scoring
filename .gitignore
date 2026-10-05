@@ -28,3 +28,4 @@ dist-ssr
 Plans/
 MEMORY/
 .wrangler
+dist-offline-test

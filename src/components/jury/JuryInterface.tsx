@@ -7,6 +7,7 @@ import { useRealtimeScoring } from '../../hooks/useRealtimeScoring';
 import { useSongs } from '../../hooks/useSongs';
 import { useSupabaseQuery } from '../../hooks/useSupabaseQuery';
 import { dismissRejected, useOutbox } from '../../lib/scoreOutbox';
+import { readCache, writeCache } from '../../lib/offlineCache';
 import { supabase } from '../../lib/supabase';
 import { Registration } from '../../types';
 import { normalizeExternalUrl } from '../../utils/url';
@@ -92,15 +93,17 @@ export default function JuryInterface() {
   const outbox = useOutbox();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [selectedCategoryCombo, setSelectedCategoryCombo] = useState('');
+  const [selectedCategoryCombo, setSelectedCategoryCombo] = useState(() => readCache<string>(`combo:${state.user?.id}`) ?? '');
   const [scoringParticipant, setScoringParticipant] = useState<Registration | null>(null);
 
-  const { categories, loading: categoriesLoading } = useEventCategories();
-  const { getSongWithIndex } = useSongs();
+  useEffect(() => writeCache(`combo:${state.user?.id}`, selectedCategoryCombo), [selectedCategoryCombo, state.user?.id]);
+
+  const { categories, loading: categoriesLoading } = useEventCategories(undefined, 'jury-categories');
+  const { getSongWithIndex } = useSongs('songs');
 
   const [categoryId, subcategoryId] = selectedCategoryCombo ? selectedCategoryCombo.split('|') : ['', ''];
   const selectedCategory = categories.find((c) => c.categoryId === categoryId && c.subcategoryId === subcategoryId);
-  const { participants, loading: participantsLoading } = useParticipants(categoryId, subcategoryId);
+  const { participants, loading: participantsLoading } = useParticipants(categoryId, subcategoryId, { jury: true });
 
   // This jury's own scores for the category, in one query.
   const { data: serverScores, refetch: refetchScores } = useSupabaseQuery<Record<string, ParticipantScoreData>>(
@@ -120,7 +123,10 @@ export default function JuryInterface() {
     },
     [participants, state.user?.id],
     {},
-    { enabled: participants.length > 0 && !!state.user?.id }
+    {
+      enabled: participants.length > 0 && !!state.user?.id,
+      cacheKey: selectedCategoryCombo ? `myscores:${state.user?.id}:${selectedCategoryCombo}` : undefined,
+    }
   );
 
   // Live updates (e.g. an admin finalizing) and a refetch after offline scores sync.
@@ -208,7 +214,9 @@ export default function JuryInterface() {
         >
           <CloudOff className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <p>
-            {outbox.online
+            {state.offline
+              ? `${pendingCount} score${pendingCount > 1 ? 's are' : ' is'} saved on this device. They sync after you reconnect and sign in.`
+              : outbox.online
               ? `Syncing ${pendingCount} saved score${pendingCount > 1 ? 's' : ''}…`
               : `You're offline. ${pendingCount} score${pendingCount > 1 ? 's are' : ' is'} saved on this device and will sync automatically when the connection is back.`}
           </p>

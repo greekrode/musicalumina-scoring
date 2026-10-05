@@ -27,6 +27,9 @@ Object.assign(globalThis, {
     return new Response(null);
   },
 });
+let signedIn = true;
+Object.assign(globalThis, { window: globalThis });
+Object.defineProperty(globalThis, 'Clerk', { get: () => (signedIn ? { session: { getToken: async () => 'token' } } : undefined), configurable: true });
 Object.defineProperty(globalThis.navigator, 'onLine', { get: () => networkUp, configurable: true });
 
 const { bindOutbox, flushOutbox, submitScore } = await import('./scoreOutbox');
@@ -36,6 +39,7 @@ const score = (id: string, finalScore: number) => ({
 
 beforeEach(() => {
   networkUp = true;
+  signedIn = true;
   landed.clear();
   finalized.clear();
   store.clear();
@@ -79,4 +83,13 @@ test('queues are per jury', async () => {
   networkUp = true;
   await flushOutbox();
   expect(landed.size).toBe(0);
+});
+
+test('without a Clerk session (offline boot) scores wait instead of being rejected', async () => {
+  signedIn = false;
+  finalized.clear();
+  expect(await submitScore(score('a', 75))).toEqual({ status: 'queued' });
+  signedIn = true;
+  await flushOutbox();
+  expect(landed.get('a')).toBe(75);
 });

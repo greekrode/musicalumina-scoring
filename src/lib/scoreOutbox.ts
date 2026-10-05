@@ -104,6 +104,11 @@ type SendResult = { ok: true } | { ok: false; retry: boolean; message: string };
 
 async function send(item: QueuedScore): Promise<SendResult> {
   try {
+    // Without a Clerk session (offline boot) the RPC would run as anon and
+    // answer "forbidden", which would wrongly drop the score. Wait instead.
+    const token = await withTimeout(Promise.resolve(window.Clerk?.session?.getToken() ?? null));
+    if (!token) return { ok: false, retry: true, message: 'Waiting for sign-in' };
+
     const { data, error } = await withTimeout(
       supabase.rpc('submit_jury_score', {
         p_registration_id: item.registrationId,

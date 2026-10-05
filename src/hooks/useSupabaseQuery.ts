@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { readCache, writeCache } from '../lib/offlineCache';
 
 interface UseSupabaseQueryOptions {
   enabled?: boolean;
+  /**
+   * Keep the last result on this device under this key. It is shown while
+   * refetching and whenever the fetch fails, so jury screens work offline.
+   */
+  cacheKey?: string;
 }
 
 interface UseSupabaseQueryResult<T> {
@@ -18,7 +24,7 @@ interface UseSupabaseQueryResult<T> {
  * @param queryFn - async function that returns data
  * @param deps - dependency array that triggers re-fetch when changed
  * @param initialData - initial value for data before first fetch
- * @param options - { enabled } to conditionally skip the query
+ * @param options - { enabled } to conditionally skip the query, { cacheKey } to keep it offline
  */
 export function useSupabaseQuery<T>(
   queryFn: () => Promise<T>,
@@ -27,21 +33,36 @@ export function useSupabaseQuery<T>(
   options?: UseSupabaseQueryOptions
 ): UseSupabaseQueryResult<T> {
   const enabled = options?.enabled ?? true;
-  const [data, setData] = useState<T>(initialData);
+  const cacheKey = options?.cacheKey;
+  const [data, setData] = useState<T>(() => (cacheKey && readCache<T>(cacheKey)) || initialData);
   const [isLoading, setIsLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
   const queryFnRef = useRef(queryFn);
+  const cacheKeyRef = useRef(cacheKey);
   const hasFetchedRef = useRef(false);
 
   // Keep queryFn ref fresh without re-triggering the fetch effect
   useEffect(() => {
     queryFnRef.current = queryFn;
+    cacheKeyRef.current = cacheKey;
   });
 
   const fetchData = useCallback(async () => {
     const requestId = ++requestIdRef.current;
-    setIsLoading(true);
+    const key = cacheKeyRef.current;
+    const cached = key ? readCache<T>(key) : undefined;
+    if (cached !== undefined) setData(cached);
+
+    // Offline boot (no Clerk session): a query would run as anon and RLS
+    // would return nothing, so stay on the cached copy.
+    if (key && !window.Clerk?.session) {
+      setError(cached === undefined ? 'Offline: no saved copy on this device yet' : null);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(cached === undefined);
     setError(null);
 
     try {
@@ -49,6 +70,7 @@ export function useSupabaseQuery<T>(
       if (requestId === requestIdRef.current) {
         setData(result);
         hasFetchedRef.current = true;
+        if (key) writeCache(key, result);
       }
     } catch (err) {
       if (requestId === requestIdRef.current) {

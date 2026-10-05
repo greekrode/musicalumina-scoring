@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 import { CategorySubcategory } from '../types';
 import { useSupabaseQuery } from './useSupabaseQuery';
 
-export function useEventCategories(eventId?: string) {
+export function useEventCategories(eventId?: string, cacheKey?: string) {
   const { data: categories, isLoading, error, refetch } = useSupabaseQuery<CategorySubcategory[]>(
     async () => {
       let eventIds: string[] = [];
@@ -66,7 +66,8 @@ export function useEventCategories(eventId?: string) {
       return result;
     },
     [eventId],
-    []
+    [],
+    { cacheKey }
   );
 
   return { categories, loading: isLoading, error, refetch };

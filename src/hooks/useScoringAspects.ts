@@ -16,7 +16,7 @@ export function useScoringAspects(eventId?: string) {
     },
     [eventId],
     [],
-    { enabled: !!eventId }
+    { enabled: !!eventId, cacheKey: eventId ? `aspects:${eventId}` : undefined }
   );
 
   return { aspects, loading: isLoading, error, refetch };

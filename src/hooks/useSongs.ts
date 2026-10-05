@@ -8,7 +8,7 @@ interface Song {
   index: number;
 }
 
-export function useSongs() {
+export function useSongs(cacheKey?: string) {
   const { data: songs, isLoading, error, refetch } = useSupabaseQuery<Song[]>(
     async () => {
       const { data, error } = await supabase
@@ -20,7 +20,8 @@ export function useSongs() {
       return data || [];
     },
     [],
-    []
+    [],
+    { cacheKey }
   );
 
   const getSongWithIndex = useCallback(

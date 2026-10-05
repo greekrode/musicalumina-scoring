@@ -2,12 +2,15 @@ import React, { createContext, useContext, useReducer, useEffect, useRef, useSta
 import { useUser, useClerk } from "@clerk/clerk-react";
 import StateCard from "../components/shared/StateCard";
 import { User } from "../types";
+import { clearOfflineData, saveIdentity } from "../lib/offlineCache";
 
 interface AppState {
   user: User | null;
   userRole: "admin" | "jury" | "score_staff" | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  /** Opened from the device cache with no connection (no Clerk session). */
+  offline: boolean;
 }
 
 type Action =
@@ -23,6 +26,7 @@ const initialState: AppState = {
   userRole: null,
   isAuthenticated: false,
   isLoading: true,
+  offline: false,
 };
 
 function appReducer(state: AppState, action: Action): AppState {
@@ -76,6 +80,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!isSignedIn || !clerkUser) {
+        clearOfflineData();
         dispatch({ type: "SET_USER", payload: { user: null, role: null } });
         setIsAuthorized(null);
         return;
@@ -118,6 +123,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             role,
           };
           dispatch({ type: "SET_USER", payload: { user, role } });
+          saveIdentity(user);
           setIsAuthorized(true);
         } else {
           // Not authorized
@@ -184,4 +190,16 @@ export function useApp() {
     throw new Error("useApp must be used within an AppProvider");
   }
   return context;
+}
+
+/** Offline boot: the cached jury identity, no Clerk. Writes still need a live session to sync. */
+export function OfflineAppProvider({ user, children }: { user: User; children: React.ReactNode }) {
+  const [state, dispatch] = useReducer(appReducer, {
+    user,
+    userRole: "jury",
+    isAuthenticated: true,
+    isLoading: false,
+    offline: true,
+  });
+  return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
 }
