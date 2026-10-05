@@ -4,7 +4,16 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
+declare global {
+  interface Window {
+    Clerk?: { session?: { getToken(): Promise<string | null> } | null };
+  }
+}
+
+// Signed-in admins/jury send their Clerk session token (Supabase third-party
+// auth); RLS reads publicMetadata.role from it (public.clerk_role()).
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  accessToken: async () => (await window.Clerk?.session?.getToken()) ?? null,
   realtime: {
     params: {
       eventsPerSecond: 10,

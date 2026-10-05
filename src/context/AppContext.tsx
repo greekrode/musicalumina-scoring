@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState } from "react";
-import { useUser, useAuth, useClerk } from "@clerk/clerk-react";
+import { useUser, useClerk } from "@clerk/clerk-react";
 import { Shield, AlertTriangle } from "lucide-react";
 import { User } from "../types";
 
@@ -63,7 +63,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const { user: clerkUser, isLoaded, isSignedIn } = useUser();
   const { signOut } = useClerk();
-  const { orgRole } = useAuth();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [authError, setAuthError] = useState<string>('');
   const signOutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -83,8 +82,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        // Check if user has admin role in the organization
-        const isAdmin = orgRole === "org:admin";
+        // Role = Clerk publicMetadata.role (set in the Clerk dashboard; users
+        // cannot edit it). RLS checks the same claim. Legacy "org:admin" = admin.
+        const role =
+          typeof clerkUser.publicMetadata?.role === "string"
+            ? clerkUser.publicMetadata.role.replace(/^org:/, "")
+            : null;
+        const isAdmin = role === "admin";
 
         if (isAdmin) {
           // Admin user
@@ -102,18 +106,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Check if user has "jury" in email or username
-        const email =
-          clerkUser.primaryEmailAddress?.emailAddress?.toLowerCase() || "";
-        const username = clerkUser.username?.toLowerCase() || "";
-        const fullName = clerkUser.fullName?.toLowerCase() || "";
-
-        const hasJuryAccess =
-          email.includes("jury") ||
-          username.includes("jury") ||
-          fullName.includes("jury");
-
-        if (hasJuryAccess) {
+        if (role === "jury") {
           // Valid jury user
           const user: User = {
             id: clerkUser.id,
@@ -148,7 +141,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     checkUserAccess();
-  }, [clerkUser, isLoaded, isSignedIn, orgRole, signOut]);
+  }, [clerkUser, isLoaded, isSignedIn, signOut]);
 
   // Clear sign-out timer on unmount
   useEffect(() => {

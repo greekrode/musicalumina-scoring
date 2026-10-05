@@ -39,11 +39,11 @@ export default function UnauthorizedModal({ isOpen, onClose }: UnauthorizedModal
             <ul className="space-y-2 text-sm text-gray-600">
               <li className="flex items-start">
                 <span className="text-piano-gold mr-2">•</span>
-                <span><strong>Admin users:</strong> Must have admin role in the organization</span>
+                <span><strong>Admin users:</strong> Must have the admin role</span>
               </li>
               <li className="flex items-start">
                 <span className="text-piano-gold mr-2">•</span>
-                <span><strong>Jury members:</strong> Must have "jury" in email, username, or name</span>
+                <span><strong>Jury members:</strong> Must have the jury role</span>
               </li>
             </ul>
           </div>
