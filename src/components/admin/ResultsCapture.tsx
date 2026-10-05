@@ -1,5 +1,5 @@
 import { Camera, Check } from 'lucide-react';
-import { toBlob } from 'html-to-image';
+import { getFontEmbedCSS, toBlob } from 'html-to-image';
 import { useRef, useState } from 'react';
 
 export interface CaptureRow {
@@ -20,7 +20,21 @@ interface ResultsCaptureProps {
   onDone: (message: string, type?: 'success' | 'error') => void;
 }
 
-const MEDAL: Record<string, string> = { gold: '#E2A225', silver: '#9AA0A6', bronze: '#B0713A' };
+const MEDAL: Record<string, string> = { 'high scorer': '#491822', gold: '#E2A225', silver: '#9AA0A6', bronze: '#B0713A' };
+
+// Instagram portrait (4:5) at minimum; long lists only make it taller.
+const WIDTH = 1080;
+const MIN_HEIGHT = 1350;
+
+/** Shrinks [data-fit] text until it fits one line (data-max / data-min in px). */
+function fitText(root: HTMLElement) {
+  root.querySelectorAll<HTMLElement>('[data-fit]').forEach((el) => {
+    let size = Number(el.dataset.max);
+    const min = Number(el.dataset.min);
+    el.style.fontSize = `${size}px`;
+    while (el.scrollWidth > el.clientWidth && size > min) el.style.fontSize = `${--size}px`;
+  });
+}
 
 function groupRows(rows: CaptureRow[]) {
   const groups = new Map<string, { order: number; rows: CaptureRow[] }>();
@@ -39,20 +53,28 @@ function ResultsSheet({ eventTitle, categoryName, rows, hideScores }: Omit<Resul
   const groups = groupRows(rows);
   return (
     <div
-      style={{ width: 1080, fontFamily: 'Manrope, system-ui, sans-serif', background: '#FFFBEF', color: '#2D2D2D' }}
-      className="border-t-[6px] border-marigold px-[72px] pb-[64px] pt-[56px]"
+      style={{ width: WIDTH, minHeight: MIN_HEIGHT, fontFamily: 'Manrope, system-ui, sans-serif', background: '#FFFBEF', color: '#2D2D2D' }}
+      className="flex flex-col border-t-[6px] border-marigold px-[72px] pb-[64px] pt-[56px]"
     >
       <div className="flex items-center justify-between">
         <img src="/logo.png" alt="" style={{ height: 34 }} />
-        <span className="type-label text-ink-accent" style={{ fontSize: 14 }}>Official results</span>
+        <span className="type-label whitespace-nowrap text-ink-accent" style={{ fontSize: 14 }}>Official results</span>
       </div>
 
       <div className="mt-[48px]">
-        <span className="type-label inline-flex items-center gap-3 text-ink-accent" style={{ fontSize: 14 }}>
-          <span className="h-px w-8 bg-marigold" />
-          {eventTitle}
-        </span>
-        <h1 className="mt-4 font-serif text-burgundy" style={{ fontSize: 56, lineHeight: 1.08, fontWeight: 500 }}>
+        <div className="type-label flex items-center gap-3 text-ink-accent">
+          <span className="h-px w-8 shrink-0 bg-marigold" />
+          <span data-fit data-max="14" data-min="10" className="min-w-0 flex-1 overflow-hidden whitespace-nowrap">
+            {eventTitle}
+          </span>
+        </div>
+        <h1
+          data-fit
+          data-max="56"
+          data-min="24"
+          className="mt-4 overflow-hidden whitespace-nowrap font-serif text-burgundy"
+          style={{ fontSize: 56, lineHeight: 1.15, fontWeight: 500 }}
+        >
           {categoryName}
         </h1>
       </div>
@@ -95,7 +117,7 @@ function ResultsSheet({ eventTitle, categoryName, rows, hideScores }: Omit<Resul
         {groups.length === 0 && <p className="text-ink-muted" style={{ fontSize: 22 }}>No scores yet.</p>}
       </div>
 
-      <div className="mt-[56px] flex items-center justify-between text-ink-muted" style={{ fontSize: 16 }}>
+      <div className="mt-auto flex items-center justify-between gap-6 whitespace-nowrap pt-[56px] text-ink-muted" style={{ fontSize: 16 }}>
         <span>musicalumina.com</span>
         <span>
           {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })}
@@ -103,6 +125,27 @@ function ResultsSheet({ eventTitle, categoryName, rows, hideScores }: Omit<Resul
       </div>
     </div>
   );
+}
+
+/**
+ * Sheet element -> PNG. Brand fonts are loaded first and embedded as data URLs
+ * (otherwise the image falls back to system fonts, which are wider and wrap).
+ * The first pass is thrown away: Safari only paints fonts and images inside
+ * the SVG snapshot from the second render on.
+ */
+export async function renderSheet(sheet: HTMLElement): Promise<Blob> {
+  await Promise.all(
+    ['500 56px "Noto Serif"', '400 20px "Noto Serif"', '400 16px Manrope', '600 24px Manrope'].map((f) =>
+      document.fonts.load(f).catch(() => [])
+    )
+  );
+  await document.fonts.ready;
+  fitText(sheet);
+  const options = { pixelRatio: 2, backgroundColor: '#FFFBEF', fontEmbedCSS: await getFontEmbedCSS(sheet) };
+  await toBlob(sheet, options);
+  const blob = await toBlob(sheet, options);
+  if (!blob) throw new Error('Could not render the image');
+  return blob;
 }
 
 /**
@@ -115,12 +158,7 @@ export default function ResultsCapture(props: ResultsCaptureProps) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const render = async () => {
-    await document.fonts.ready;
-    const blob = await toBlob(sheetRef.current!, { pixelRatio: 2, backgroundColor: '#FFFBEF', cacheBust: true });
-    if (!blob) throw new Error('Could not render the image');
-    return blob;
-  };
+  const render = () => renderSheet(sheetRef.current!);
 
   const capture = async () => {
     setBusy(true);
