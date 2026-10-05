@@ -15,6 +15,7 @@ import { useEvents } from '../../hooks/useEvents';
 import { useSupabaseQuery } from '../../hooks/useSupabaseQuery';
 import ScoringAspectsManager from './ScoringAspectsManager';
 import PrizeConfigurationManager from './PrizeConfigurationManager';
+import { Eyebrow } from '../shared/StateCard';
 
 export default function EventsManager() {
   const [selectedEvent, setSelectedEvent] = useState<{
@@ -91,32 +92,29 @@ export default function EventsManager() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'upcoming':
-        return 'bg-blue-100 text-blue-800';
+        return 'pill-wait';
       case 'ongoing':
-        return 'bg-green-100 text-green-800';
+        return 'pill-ok';
       case 'completed':
-        return 'bg-gray-100 text-gray-800';
+        return 'pill-muted';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'pill-muted';
     }
   };
 
   if (eventsLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-piano-wine"></div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="spinner" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-600">{error}</p>
-        <button
-          onClick={refetch}
-          className="mt-4 px-4 py-2 bg-piano-wine text-white rounded-lg hover:bg-piano-wine/90"
-        >
+      <div className="py-12 text-center">
+        <p className="text-status-error-fg">{error}</p>
+        <button onClick={refetch} className="btn-primary mt-4">
           Retry
         </button>
       </div>
@@ -125,22 +123,20 @@ export default function EventsManager() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-piano-wine">
-          Events Management
-        </h2>
-        <p className="text-gray-600">Manage competition and festival events</p>
-      </div>
-
-      <div className="mb-4 flex items-center justify-end">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <Eyebrow>Events</Eyebrow>
+          <h2 className="mt-3 text-[1.5rem]">Events Management</h2>
+          <p className="mt-1 text-ink-muted">Manage competition and festival events</p>
+        </div>
         <button
           onClick={() => setHideInactive((prev) => !prev)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-piano-wine bg-piano-cream hover:bg-piano-gold/20 rounded-lg transition-colors duration-200"
+          className="btn-outline btn-sm"
         >
           {hideInactive ? (
-            <Eye className="w-4 h-4" />
+            <Eye className="h-4 w-4" />
           ) : (
-            <EyeOff className="w-4 h-4" />
+            <EyeOff className="h-4 w-4" />
           )}
           {hideInactive ? 'Show Inactive' : 'Hide Inactive'}
         </button>
@@ -148,50 +144,41 @@ export default function EventsManager() {
 
       <div className="space-y-4">
         {filteredEvents.map((event) => (
-          <div
-            key={event.id}
-            className="bg-white border border-piano-gold/20 rounded-xl shadow-sm p-6"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center mb-2">
-                  <h3 className="text-lg font-semibold text-piano-wine">
-                    {event.title}
-                  </h3>
-                  <span
-                    className={`ml-3 px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
-                      event.status
-                    )}`}
-                  >
+          <div key={event.id} className="card p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="mb-2 flex flex-wrap items-center gap-3">
+                  <h3 className="text-[1.25rem]">{event.title}</h3>
+                  <span className={getStatusColor(event.status)}>
                     {event.status}
                   </span>
                 </div>
 
-                <div className="space-y-2 text-sm text-gray-600">
+                <div className="space-y-2 text-sm text-ink-muted">
                   <div className="flex items-center">
-                    <MapPin className="w-4 h-4 mr-2 text-piano-wine/60" />
+                    <MapPin className="mr-2 h-4 w-4 text-ink-accent" />
                     {event.location}
                   </div>
                   <div className="flex items-center">
-                    <Calendar className="w-4 h-4 mr-2 text-piano-wine/60" />
+                    <Calendar className="mr-2 h-4 w-4 text-ink-accent" />
                     {formatDate(event.start_date)} -{' '}
                     {formatDate(event.end_date)}
                   </div>
                   <div className="flex items-center">
-                    <Users className="w-4 h-4 mr-2 text-piano-wine/60" />
+                    <Users className="mr-2 h-4 w-4 text-ink-accent" />
                     Total participants:{' '}
                     {participantCounts[event.id] ?? 0}
                   </div>
                 </div>
 
-                <div className="mt-4 flex gap-2">
+                <div className="mt-4 flex flex-wrap gap-3">
                   <button
                     onClick={() =>
                       setSelectedEvent({ id: event.id, title: event.title })
                     }
-                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-piano-wine bg-piano-cream hover:bg-piano-gold/20 rounded-lg transition-colors duration-200"
+                    className="btn-outline btn-sm"
                   >
-                    <Settings className="w-4 h-4 mr-1.5" />
+                    <Settings className="h-4 w-4" />
                     Manage Scoring Aspects
                   </button>
                   <button
@@ -201,34 +188,37 @@ export default function EventsManager() {
                         title: event.title,
                       })
                     }
-                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-piano-wine bg-piano-cream hover:bg-piano-gold/20 rounded-lg transition-colors duration-200"
+                    className="btn-outline btn-sm"
                   >
-                    <Award className="w-4 h-4 mr-1.5" />
+                    <Award className="h-4 w-4" />
                     Configure Prizes
                   </button>
                 </div>
               </div>
 
-              <div className="ml-6 flex items-center">
-                <label className="flex items-center cursor-pointer">
-                  <span className="mr-3 text-sm font-medium text-piano-wine">
+              <div className="flex items-center">
+                <label className="flex cursor-pointer items-center">
+                  <span className="type-label mr-3 text-ink-muted">
                     {event.active ? 'Active' : 'Inactive'}
                   </span>
                   <button
                     onClick={() => toggleEventActive(event.id, event.active)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      event.active ? 'bg-piano-gold' : 'bg-gray-300'
+                    role="switch"
+                    aria-checked={event.active}
+                    aria-label={event.active ? 'Deactivate event' : 'Activate event'}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-sm transition-colors ${
+                      event.active ? 'bg-marigold' : 'bg-rule-strong'
                     }`}
                   >
                     <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      className={`inline-block h-4 w-4 transform rounded-sm bg-offWhite transition-transform ${
                         event.active ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
                     {event.active ? (
-                      <ToggleRight className="absolute right-1 w-3 h-3 text-white" />
+                      <ToggleRight className="absolute left-1 h-3 w-3 text-burgundy" />
                     ) : (
-                      <ToggleLeft className="absolute left-1 w-3 h-3 text-gray-600" />
+                      <ToggleLeft className="absolute right-1 h-3 w-3 text-ink-muted" />
                     )}
                   </button>
                 </label>
@@ -239,12 +229,10 @@ export default function EventsManager() {
       </div>
 
       {filteredEvents.length === 0 && (
-        <div className="text-center py-12">
-          <Calendar className="mx-auto h-12 w-12 text-piano-wine/40" />
-          <h3 className="mt-2 text-sm font-medium text-piano-wine">
-            No events found
-          </h3>
-          <p className="mt-1 text-sm text-gray-500">
+        <div className="py-12 text-center">
+          <Calendar className="mx-auto h-12 w-12 text-ink-subtle" />
+          <h3 className="mt-2 text-[1.25rem]">No events found</h3>
+          <p className="mt-1 text-sm text-ink-muted">
             {hideInactive
               ? 'No active events. Toggle to show inactive events.'
               : 'No competition or festival events available.'}

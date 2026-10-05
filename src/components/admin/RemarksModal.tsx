@@ -1,4 +1,5 @@
 import { MessageSquare, X } from 'lucide-react';
+import { Eyebrow } from '../shared/StateCard';
 
 interface RemarksModalProps {
   remarks: Array<{ jury_name: string; remarks: string }>;
@@ -7,43 +8,39 @@ interface RemarksModalProps {
 
 export default function RemarksModal({ remarks, onClose }: RemarksModalProps) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-hidden">
-        <div className="bg-piano-wine p-4 text-white">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Jury Remarks</h3>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+    <div className="overlay">
+      <div className="sheet" role="dialog" aria-modal="true">
+        <div className="flex items-start justify-between px-6 pt-6">
+          <div>
+            <Eyebrow>Feedback</Eyebrow>
+            <h2 className="mt-3 text-[1.5rem]">Jury Remarks</h2>
           </div>
+          <button onClick={onClose} className="icon-btn" aria-label="Close" title="Close">
+            <X className="h-5 w-5" />
+          </button>
         </div>
-        <div className="p-6 max-h-[60vh] overflow-y-auto">
+        <div className="px-6 pb-6 pt-6">
           {remarks.length > 0 ? (
             <div className="space-y-4">
               {remarks.map((remark, index) => (
-                <div key={index} className="p-4 bg-gray-50 rounded-lg border">
-                  <div className="flex items-center mb-2">
-                    <MessageSquare className="w-4 h-4 text-piano-wine mr-2" />
-                    <h4 className="font-medium text-piano-wine">
+                <div key={index} className="border border-rule-hairline bg-surface-warm p-4">
+                  <div className="mb-2 flex items-center">
+                    <MessageSquare className="mr-2 h-4 w-4 text-ink-accent" />
+                    <h4 className="font-medium text-ink-primary">
                       {remark.jury_name || 'Unknown Jury'}
                     </h4>
                   </div>
-                  <p className="text-gray-700 text-sm leading-relaxed">
+                  <p className="text-sm leading-relaxed text-ink-body">
                     {remark.remarks}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-8">
-              <MessageSquare className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No Remarks
-              </h3>
-              <p className="text-gray-500">
+            <div className="py-8 text-center">
+              <MessageSquare className="mx-auto mb-4 h-12 w-12 text-ink-subtle" />
+              <h3 className="mb-2 text-[1.25rem]">No Remarks</h3>
+              <p className="text-ink-muted">
                 No jury members have provided remarks for this participant yet.
               </p>
             </div>

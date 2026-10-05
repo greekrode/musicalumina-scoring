@@ -1,4 +1,4 @@
-import { Calendar, Clock, FileText, History, Search, User } from 'lucide-react';
+import { Calendar, ChevronDown, Clock, FileText, History, Search, User } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useEventCategories } from '../../hooks/useEventCategories';
 import { useEvents } from '../../hooks/useEvents';
@@ -9,6 +9,7 @@ import {
   getScoringHistory,
 } from '../../lib/scoringHistory';
 import { EventScoringHistory } from '../../types';
+import { Eyebrow } from '../shared/StateCard';
 
 export default function ScoringHistory() {
   const [selectedEventId, setSelectedEventId] = useState('');
@@ -111,111 +112,110 @@ export default function ScoringHistory() {
   const getOperationIcon = (operation: string) => {
     switch (operation) {
       case 'INSERT':
-        return <FileText className="w-4 h-4 text-green-600" />;
+        return <FileText className="h-4 w-4 text-status-open-fg" />;
       case 'UPDATE':
-        return <History className="w-4 h-4 text-blue-600" />;
+        return <History className="h-4 w-4 text-ink-accent" />;
       case 'DELETE':
-        return <FileText className="w-4 h-4 text-red-600" />;
+        return <FileText className="h-4 w-4 text-status-error-fg" />;
       default:
-        return <FileText className="w-4 h-4 text-gray-600" />;
+        return <FileText className="h-4 w-4 text-ink-muted" />;
     }
   };
 
   const getOperationColor = (operation: string) => {
     switch (operation) {
       case 'INSERT':
-        return 'bg-green-100 text-green-800';
+        return 'pill-ok';
       case 'UPDATE':
-        return 'bg-blue-100 text-blue-800';
+        return 'pill-wait';
       case 'DELETE':
-        return 'bg-red-100 text-red-800';
+        return 'pill-error';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'pill-muted';
     }
   };
 
   if (eventsLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-piano-wine"></div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="spinner" />
       </div>
     );
   }
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-piano-wine">
-            Scoring History
-          </h2>
-          <p className="text-gray-600">
-            Complete audit trail of all scoring activities
-          </p>
-        </div>
+      <div className="mb-6">
+        <Eyebrow>Audit</Eyebrow>
+        <h2 className="mt-3 text-[1.5rem]">Scoring History</h2>
+        <p className="mt-1 text-ink-muted">
+          Complete audit trail of all scoring activities
+        </p>
       </div>
 
       {/* Event Selection */}
-      <div className="bg-white rounded-xl shadow-sm border border-piano-gold/20 p-6 mb-6">
+      <div className="card mb-6 p-6">
         <div className="flex items-center">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-piano-wine mb-2">
-              Select Event
-            </label>
-            <select
-              value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
-            >
-              <option value="">Select an event...</option>
-              {events.map((event) => (
-                <option key={event.id} value={event.id}>
-                  {event.title}
-                </option>
-              ))}
-            </select>
+            <label className="field-label">Select Event</label>
+            <div className="relative">
+              <select
+                value={selectedEventId}
+                onChange={(e) => setSelectedEventId(e.target.value)}
+                className="field"
+              >
+                <option value="">Select an event...</option>
+                {events.map((event) => (
+                  <option key={event.id} value={event.id}>
+                    {event.title}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+            </div>
           </div>
         </div>
       </div>
 
       {!selectedEventId ? (
-        <div className="bg-piano-cream rounded-xl p-8 text-center">
-          <Calendar className="mx-auto h-12 w-12 text-piano-wine/40 mb-4" />
-          <h3 className="text-lg font-medium text-piano-wine mb-2">
-            Select an Event
-          </h3>
-          <p className="text-gray-600">
+        <div className="border border-rule-hairline bg-surface-warm p-8 text-center">
+          <Calendar className="mx-auto mb-4 h-12 w-12 text-ink-subtle" />
+          <h3 className="mb-2 text-[1.25rem]">Select an Event</h3>
+          <p className="text-ink-muted">
             Please select an event to view scoring history
           </p>
         </div>
       ) : (
         <>
           {/* Search and Filter Controls */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-piano-wine/60" />
-                <input
-                  type="text"
-                  placeholder="Search participants, jury, or activities..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
-                />
-              </div>
+          <div className="mb-6 flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+              <input
+                type="text"
+                placeholder="Search participants, jury, or activities..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="field pl-10 sm:w-80"
+              />
+            </div>
+            <div className="relative">
               <select
                 value={selectedOperation}
                 onChange={(e) => setSelectedOperation(e.target.value)}
-                className="px-3 py-2 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
+                className="field"
               >
                 <option value="all">All Operations</option>
                 <option value="INSERT">New Scores</option>
                 <option value="UPDATE">Score Updates</option>
               </select>
+              <ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+            </div>
+            <div className="relative">
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-3 py-2 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
+                className="field"
               >
                 <option value="all">All Categories</option>
                 {categories.map((category) => (
@@ -227,10 +227,13 @@ export default function ScoringHistory() {
                   </option>
                 ))}
               </select>
+              <ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+            </div>
+            <div className="relative">
               <select
                 value={selectedJury}
                 onChange={(e) => setSelectedJury(e.target.value)}
-                className="px-3 py-2 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
+                className="field"
               >
                 <option value="all">All Jury</option>
                 {uniqueJury.map((juryId) => (
@@ -240,12 +243,13 @@ export default function ScoringHistory() {
                   </option>
                 ))}
               </select>
+              <ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
             </div>
           </div>
 
           {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-piano-wine"></div>
+            <div className="flex h-64 items-center justify-center">
+              <div className="spinner" />
             </div>
           ) : (
             <div className="space-y-4">
@@ -254,36 +258,27 @@ export default function ScoringHistory() {
                   formatHistoryEntry(entry);
 
                 return (
-                  <div
-                    key={entry.id}
-                    className="bg-white rounded-xl shadow-sm border border-piano-gold/20 p-6"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-piano-cream rounded-full flex items-center justify-center">
+                  <div key={entry.id} className="card p-6">
+                    <div className="mb-4 flex items-start justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center bg-surface-warm">
                           {getOperationIcon(entry.operation)}
                         </div>
                         <div>
-                          <div className="flex items-center space-x-2 mb-1">
-                            <h3 className="text-lg font-semibold text-piano-wine">
-                              {title}
-                            </h3>
-                            <span
-                              className={`px-2 py-1 text-xs font-medium rounded-full ${getOperationColor(
-                                entry.operation
-                              )}`}
-                            >
+                          <div className="mb-1 flex flex-wrap items-center gap-2">
+                            <h3 className="text-[1.25rem]">{title}</h3>
+                            <span className={getOperationColor(entry.operation)}>
                               {entry.operation}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-600">{description}</p>
-                          <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                          <p className="text-sm text-ink-muted">{description}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-ink-muted">
                             <div className="flex items-center">
-                              <User className="w-3 h-3 mr-1" />
+                              <User className="mr-1 h-3 w-3" />
                               {entry.jury_name || entry.changed_by}
                             </div>
                             <div className="flex items-center">
-                              <Clock className="w-3 h-3 mr-1" />
+                              <Clock className="mr-1 h-3 w-3" />
                               {formatDate(entry.changed_at)}
                             </div>
                           </div>
@@ -292,33 +287,31 @@ export default function ScoringHistory() {
                     </div>
 
                     {changes.length > 0 && (
-                      <div className="mt-4 pt-4 border-t border-piano-gold/20">
-                        <h4 className="text-sm font-medium text-piano-wine mb-3">
-                          Changes
-                        </h4>
+                      <div className="mt-4 border-t border-rule-hairline pt-4">
+                        <h4 className="type-label mb-3 text-ink-muted">Changes</h4>
                         <div className="space-y-2">
                           {changes.map((change, index) => (
                             <div
                               key={index}
-                              className="flex items-center justify-between p-3 bg-piano-cream/50 rounded-lg"
+                              className="flex items-center justify-between bg-surface-warm p-3"
                             >
-                              <span className="text-sm font-medium text-gray-700 capitalize">
+                              <span className="text-sm font-medium capitalize text-ink-body">
                                 {change.field.replace('_', ' ')}
                               </span>
-                              <div className="flex items-center space-x-2 text-sm">
+                              <div className="flex items-center gap-2 text-sm">
                                 {change.before !== null && (
                                   <>
-                                    <span className="text-red-600">
+                                    <span className="text-status-error-fg">
                                       {typeof change.before === 'boolean'
                                         ? change.before
                                           ? 'true'
                                           : 'false'
                                         : change.before}
                                     </span>
-                                    <span className="text-gray-400">→</span>
+                                    <span className="text-ink-subtle">→</span>
                                   </>
                                 )}
-                                <span className="text-green-600 font-medium">
+                                <span className="font-medium text-status-open-fg">
                                   {typeof change.after === 'boolean'
                                     ? change.after
                                       ? 'true'
@@ -338,12 +331,10 @@ export default function ScoringHistory() {
           )}
 
           {filteredEntries.length === 0 && !loading && (
-            <div className="text-center py-12">
-              <History className="mx-auto h-12 w-12 text-piano-wine/40" />
-              <h3 className="mt-2 text-sm font-medium text-piano-wine">
-                No scoring history found
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
+            <div className="py-12 text-center">
+              <History className="mx-auto h-12 w-12 text-ink-subtle" />
+              <h3 className="mt-2 text-[1.25rem]">No scoring history found</h3>
+              <p className="mt-1 text-sm text-ink-muted">
                 {historyEntries.length === 0
                   ? 'No scoring activities have been recorded for this event yet.'
                   : 'Try adjusting your search criteria or filters.'}

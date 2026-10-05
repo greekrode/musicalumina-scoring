@@ -4,6 +4,7 @@ import { useApp } from "../../context/AppContext";
 import EventsManager from "./EventsManager";
 import ResultsOverview from "./ResultsOverview";
 import ScoringHistory from "./ScoringHistory";
+import { Eyebrow } from "../shared/StateCard";
 
 type TabType = "events" | "results" | "history";
 
@@ -26,42 +27,43 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-piano-wine mb-2">
+        <Eyebrow>Administration</Eyebrow>
+        <h1 className="mt-4 text-[clamp(1.75rem,1.3rem+1.6vw,2.5rem)]">
           Admin Dashboard
         </h1>
-        <p className="text-gray-600">
+        <p className="mt-2 text-ink-muted">
           Manage competition events, scoring criteria, and view results
         </p>
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-white rounded-xl shadow-sm border border-piano-gold/20 overflow-hidden">
-        <div className="border-b border-piano-gold/20">
-          <nav className="-mb-px flex">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`${
-                  activeTab === tab.id
-                    ? "border-piano-wine text-piano-wine bg-piano-cream"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                } whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm flex items-center transition-colors duration-200`}
-              >
-                <tab.icon className="w-5 h-5 mr-2" />
-                {tab.name}
-              </button>
-            ))}
-          </nav>
-        </div>
+      <div className="overflow-x-auto border-b border-rule-hairline">
+        <nav className="-mb-px flex" role="tablist">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`${
+                activeTab === tab.id
+                  ? "border-b-2 border-marigold text-ink-primary"
+                  : "border-b-2 border-transparent text-ink-muted hover:text-ink-primary"
+              } type-label flex items-center gap-2 whitespace-nowrap px-5 py-4 transition-colors duration-200`}
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.name}
+            </button>
+          ))}
+        </nav>
+      </div>
 
-        <div className="p-6 bg-piano-cream/30">
-          {activeTab === "events" && <EventsManager />}
-          {activeTab === "results" && <ResultsOverview />}
-          {activeTab === "history" && <ScoringHistory />}
-        </div>
+      <div className="pt-8" role="tabpanel">
+        {activeTab === "events" && <EventsManager />}
+        {activeTab === "results" && <ResultsOverview />}
+        {activeTab === "history" && <ScoringHistory />}
       </div>
     </div>
   );

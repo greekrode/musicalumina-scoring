@@ -1,5 +1,5 @@
-import React from 'react';
-import { AlertTriangle, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import { Eyebrow } from './shared/StateCard';
 
 interface UnauthorizedModalProps {
   isOpen: boolean;
@@ -10,56 +10,37 @@ export default function UnauthorizedModal({ isOpen, onClose }: UnauthorizedModal
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-scale-up">
-        <div className="bg-gradient-to-r from-red-500 to-red-600 p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-white" />
-              </div>
-              <h2 className="text-2xl font-bold">Access Denied</h2>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white/20 rounded-lg transition-colors duration-200"
-            >
-              <X className="w-6 h-6" />
-            </button>
+    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="unauthorized-title">
+      <div className="sheet sm:max-w-md">
+        <div className="flex items-start justify-between gap-4 px-6 pt-6">
+          <div>
+            <Eyebrow>Access denied</Eyebrow>
+            <h2 id="unauthorized-title" className="mt-3 text-[1.5rem]">Not authorised.</h2>
           </div>
+          <button onClick={onClose} className="icon-btn" aria-label="Close">
+            <X className="h-5 w-5" />
+          </button>
         </div>
-        
-        <div className="p-6">
-          <p className="text-gray-700 mb-4">
-            You are not authorized to access this application.
-          </p>
-          
-          <div className="bg-piano-cream/50 border border-piano-gold/30 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold text-piano-wine mb-2">Access Requirements:</h3>
-            <ul className="space-y-2 text-sm text-gray-600">
-              <li className="flex items-start">
-                <span className="text-piano-gold mr-2">•</span>
-                <span><strong>Admin users:</strong> Must have the admin role</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-piano-gold mr-2">•</span>
-                <span><strong>Jury members:</strong> Must have the jury role (score viewers: score_staff)</span>
-              </li>
-            </ul>
-          </div>
-          
-          <p className="text-sm text-gray-500 mb-4">
-            If you believe you should have access, please contact your administrator.
-          </p>
-          
-          <button
-            onClick={onClose}
-            className="w-full py-3 bg-piano-wine text-white rounded-lg font-medium hover:bg-piano-wine/90 transition-colors duration-200"
-          >
+        <div className="px-6 pb-6 pt-3 text-[0.9375rem] text-ink-muted">
+          <p>This app needs one of these roles on your account:</p>
+          <dl className="mt-4 divide-y divide-rule-hairline border-y border-rule-hairline">
+            {[
+              ['admin', 'Manage events and finalize results'],
+              ['jury', 'Score performances'],
+              ['score_staff', 'View results'],
+            ].map(([role, what]) => (
+              <div key={role} className="flex items-center justify-between gap-4 py-2.5">
+                <dt className="font-mono text-[0.8125rem] text-ink-primary">{role}</dt>
+                <dd className="text-right text-[0.875rem]">{what}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-4">If you should have access, ask an admin to grant the role.</p>
+          <button onClick={onClose} className="btn-secondary mt-6 w-full">
             Understood
           </button>
         </div>
       </div>
     </div>
   );
-} 
+}

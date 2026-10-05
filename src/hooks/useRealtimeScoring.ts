@@ -36,6 +36,7 @@ export function useRealtimeScoring({
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryCountRef = useRef(0);
   const isMountedRef = useRef(true);
+  const hasJoinedRef = useRef(false);
 
   // Stable callback refs — avoids re-subscribing when callbacks change
   const onScoringChangeRef = useRef(onScoringChange);
@@ -79,6 +80,16 @@ export function useRealtimeScoring({
     // Clean previous channels before setting up new ones
     await removeChannels();
 
+    // Join with the Clerk token, not the anon key: realtime applies RLS to
+    // postgres_changes, so an anon join silently receives nothing. Heartbeats
+    // refresh the token afterwards.
+    try {
+      await supabase.realtime.setAuth();
+    } catch {
+      // Offline token refresh failed; the subscribe below errors and retries.
+    }
+    if (!isMountedRef.current) return;
+
     const channelName = `scoring-${eventId}-${categoryId || 'all'}-${subcategoryId || 'all'}`;
 
     const scoringChannel = supabase
@@ -111,6 +122,9 @@ export function useRealtimeScoring({
         if (subscriptionStatus === 'SUBSCRIBED') {
           retryCountRef.current = 0;
           setStatus({ connected: true, error: undefined });
+          // Changes made while disconnected are not replayed: refetch on rejoin.
+          if (hasJoinedRef.current) onScoringChangeRef.current();
+          hasJoinedRef.current = true;
         } else if (
           subscriptionStatus === 'CHANNEL_ERROR' ||
           subscriptionStatus === 'TIMED_OUT'

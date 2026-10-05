@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Plus, Edit2, Trash2, Save, X } from "lucide-react";
 import { EventScoringAspect } from "../../types";
 import { supabase } from "../../lib/supabase";
+import { Eyebrow } from "../shared/StateCard";
 
 interface ScoringAspectsManagerProps {
   eventId: string;
@@ -147,34 +148,32 @@ export default function ScoringAspectsManager({
     (editingAspect ? 0 : newAspect.weight);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-piano-wine">
-            Manage Scoring Aspects - {eventTitle}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-          >
-            <X className="w-6 h-6" />
+    <div className="overlay">
+      <div className="sheet sm:max-w-4xl" role="dialog" aria-modal="true">
+        <div className="flex items-start justify-between px-6 pt-6">
+          <div>
+            <Eyebrow>Scoring Aspects</Eyebrow>
+            <h2 className="mt-3 text-[1.5rem]">
+              Manage Scoring Aspects - {eventTitle}
+            </h2>
+          </div>
+          <button onClick={onClose} className="icon-btn" aria-label="Close" title="Close">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <div className="px-6 pb-6 pt-6">
           {loading ? (
-            <div className="flex justify-center items-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-piano-wine"></div>
+            <div className="flex h-32 items-center justify-center">
+              <div className="spinner" />
             </div>
           ) : (
             <>
-              <div className="space-y-4 mb-6">
-                <h3 className="text-lg font-semibold text-piano-wine">
-                  Existing Aspects
-                </h3>
+              <div className="mb-6 space-y-4">
+                <h3 className="text-[1.25rem]">Existing Aspects</h3>
 
                 {aspects.length === 0 ? (
-                  <p className="text-gray-500">
+                  <p className="text-ink-muted">
                     No scoring aspects defined yet.
                   </p>
                 ) : (
@@ -182,7 +181,7 @@ export default function ScoringAspectsManager({
                     {aspects.map((aspect, index) => (
                       <div
                         key={aspect.id}
-                        className="p-4 border border-piano-gold/30 rounded-lg bg-piano-cream/30"
+                        className="border border-rule-hairline bg-surface-warm p-4"
                       >
                         {editingAspect?.id === aspect.id ? (
                           <div className="space-y-3">
@@ -195,7 +194,7 @@ export default function ScoringAspectsManager({
                                   name: e.target.value,
                                 })
                               }
-                              className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg"
+                              className="field"
                               placeholder="Aspect name"
                             />
                             <textarea
@@ -206,15 +205,13 @@ export default function ScoringAspectsManager({
                                   description: e.target.value,
                                 })
                               }
-                              className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg"
+                              className="field"
                               placeholder="Description (optional)"
                               rows={2}
                             />
                             <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Weight (%)
-                                </label>
+                                <label className="field-label">Weight (%)</label>
                                 <input
                                   type="number"
                                   value={editingAspect.weight}
@@ -224,15 +221,13 @@ export default function ScoringAspectsManager({
                                       weight: parseInt(e.target.value) || 0,
                                     })
                                   }
-                                  className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg"
+                                  className="field"
                                   min="0"
                                   max="100"
                                 />
                               </div>
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Max Score
-                                </label>
+                                <label className="field-label">Max Score</label>
                                 <input
                                   type="number"
                                   value={editingAspect.max_score}
@@ -243,15 +238,15 @@ export default function ScoringAspectsManager({
                                         parseInt(e.target.value) || 100,
                                     })
                                   }
-                                  className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg"
+                                  className="field"
                                   min="1"
                                 />
                               </div>
                             </div>
-                            <div className="flex justify-end space-x-2">
+                            <div className="flex flex-wrap justify-end gap-2">
                               <button
                                 onClick={() => setEditingAspect(null)}
-                                className="px-3 py-1 text-gray-600 hover:text-gray-800"
+                                className="btn-ghost btn-sm"
                               >
                                 Cancel
                               </button>
@@ -259,7 +254,7 @@ export default function ScoringAspectsManager({
                                 onClick={() =>
                                   handleUpdateAspect(editingAspect)
                                 }
-                                className="px-3 py-1 bg-piano-wine text-white rounded-lg hover:bg-piano-wine/90"
+                                className="btn-primary btn-sm"
                               >
                                 Save
                               </button>
@@ -268,32 +263,36 @@ export default function ScoringAspectsManager({
                         ) : (
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h4 className="font-medium text-piano-wine">
+                              <h4 className="font-medium text-ink-primary">
                                 {aspect.name}
                               </h4>
                               {aspect.description && (
-                                <p className="text-sm text-gray-600 mt-1">
+                                <p className="mt-1 text-sm text-ink-muted">
                                   {aspect.description}
                                 </p>
                               )}
-                              <div className="flex items-center mt-2 space-x-4 text-sm text-gray-500">
+                              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-muted">
                                 <span>Weight: {aspect.weight}%</span>
                                 <span>Max Score: {aspect.max_score}</span>
                                 <span>Order: {index + 1}</span>
                               </div>
                             </div>
-                            <div className="flex items-center space-x-2 ml-4">
+                            <div className="ml-4 flex items-center gap-1">
                               <button
                                 onClick={() => setEditingAspect(aspect)}
-                                className="p-1 text-piano-gold hover:text-piano-gold/80"
+                                className="icon-btn"
+                                aria-label="Edit aspect"
+                                title="Edit aspect"
                               >
-                                <Edit2 className="w-4 h-4" />
+                                <Edit2 className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteAspect(aspect.id)}
-                                className="p-1 text-red-600 hover:text-red-700"
+                                className="icon-btn text-status-error-fg hover:text-status-error-fg"
+                                aria-label="Delete aspect"
+                                title="Delete aspect"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="h-4 w-4" />
                               </button>
                             </div>
                           </div>
@@ -304,10 +303,8 @@ export default function ScoringAspectsManager({
                 )}
               </div>
 
-              <div className="border-t border-piano-gold/30 pt-6">
-                <h3 className="text-lg font-semibold text-piano-wine mb-4">
-                  Add New Aspect
-                </h3>
+              <div className="border-t border-rule-hairline pt-6">
+                <h3 className="mb-4 text-[1.25rem]">Add New Aspect</h3>
 
                 <div className="space-y-3">
                   <input
@@ -316,7 +313,7 @@ export default function ScoringAspectsManager({
                     onChange={(e) =>
                       setNewAspect({ ...newAspect, name: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg"
+                    className="field"
                     placeholder="Aspect name"
                   />
                   <textarea
@@ -327,15 +324,13 @@ export default function ScoringAspectsManager({
                         description: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg"
+                    className="field"
                     placeholder="Description (optional)"
                     rows={2}
                   />
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Weight (%)
-                      </label>
+                      <label className="field-label">Weight (%)</label>
                       <input
                         type="number"
                         value={newAspect.weight}
@@ -345,15 +340,13 @@ export default function ScoringAspectsManager({
                             weight: parseInt(e.target.value) || 0,
                           })
                         }
-                        className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg"
+                        className="field"
                         min="0"
                         max="100"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Max Score
-                      </label>
+                      <label className="field-label">Max Score</label>
                       <input
                         type="number"
                         value={newAspect.max_score}
@@ -363,7 +356,7 @@ export default function ScoringAspectsManager({
                             max_score: parseInt(e.target.value) || 100,
                           })
                         }
-                        className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg"
+                        className="field"
                         min="1"
                       />
                     </div>
@@ -372,35 +365,33 @@ export default function ScoringAspectsManager({
                   <button
                     onClick={handleSaveAspect}
                     disabled={!newAspect.name.trim()}
-                    className={`w-full py-2 rounded-lg font-medium transition-colors ${
-                      newAspect.name.trim()
-                        ? "bg-piano-wine text-white hover:bg-piano-wine/90"
-                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    }`}
+                    className="btn-primary w-full"
                   >
-                    <Plus className="w-4 h-4 inline mr-2" />
+                    <Plus className="h-4 w-4" />
                     Add Aspect
                   </button>
                 </div>
               </div>
 
-              <div className="mt-6 p-3 bg-piano-cream rounded-lg border border-piano-gold/30">
-                <p className="text-sm text-piano-wine">
+              <div className="mt-6 border border-rule-hairline bg-surface-warm p-3">
+                <p className="text-sm text-ink-primary">
                   Total Weight:{" "}
                   <span
                     className={`font-semibold ${
-                      totalWeight === 100 ? "text-green-600" : "text-red-600"
+                      totalWeight === 100
+                        ? "text-status-open-fg"
+                        : "text-status-error-fg"
                     }`}
                   >
                     {totalWeight}%
                   </span>
-                  <span className="text-gray-600 ml-2">
+                  <span className="ml-2 text-ink-muted">
                     (Must equal 100% for proper score calculation)
                   </span>
                 </p>
                 {totalWeight !== 100 && (
-                  <p className="text-xs text-red-600 mt-1">
-                    ⚠️ Weights must sum to exactly 100%. Current total:{" "}
+                  <p className="mt-1 text-xs text-status-error-fg">
+                    Weights must sum to exactly 100%. Current total:{" "}
                     {totalWeight}%
                   </p>
                 )}

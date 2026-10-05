@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Category, ScoringCriteria } from '../../types';
+import { Eyebrow } from '../shared/StateCard';
 
 interface CategoryFormProps {
   category?: Category | null;
@@ -85,196 +86,180 @@ export default function CategoryForm({ category, onClose }: CategoryFormProps) {
   const totalWeight = criteria.reduce((sum, c) => sum + c.weight, 0);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {category ? 'Edit Category' : 'Create New Category'}
-          </h2>
+    <div className="overlay">
+      <div className="sheet sm:max-w-4xl" role="dialog" aria-modal="true">
+        <div className="flex items-start justify-between px-6 pt-6">
+          <div>
+            <Eyebrow>Category</Eyebrow>
+            <h2 className="mt-3 text-[1.5rem]">
+              {category ? 'Edit Category' : 'Create New Category'}
+            </h2>
+          </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+            className="icon-btn"
+            aria-label="Close"
+            title="Close"
           >
-            <X className="w-6 h-6" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Time Slot
-                </label>
-                <input
-                  type="text"
-                  value={formData.timeSlot}
-                  onChange={(e) => setFormData({ ...formData, timeSlot: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="e.g., 9:00 AM - 12:00 PM"
-                  required
-                />
-              </div>
-            </div>
-
+        <form onSubmit={handleSubmit} className="space-y-6 px-6 pb-6 pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              <label className="field-label">Category Name</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="field"
                 required
               />
             </div>
 
-            <div className="flex items-center">
+            <div>
+              <label className="field-label">Time Slot</label>
               <input
-                type="checkbox"
-                id="isActive"
-                checked={formData.isActive}
-                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                type="text"
+                value={formData.timeSlot}
+                onChange={(e) => setFormData({ ...formData, timeSlot: e.target.value })}
+                className="field"
+                placeholder="e.g., 9:00 AM - 12:00 PM"
+                required
               />
-              <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
-                Active category
-              </label>
+            </div>
+          </div>
+
+          <div>
+            <label className="field-label">Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={3}
+              className="field"
+              required
+            />
+          </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="isActive"
+              checked={formData.isActive}
+              onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+              className="h-4 w-4 rounded-sm border-rule-subtle accent-burgundy focus:ring-marigold"
+            />
+            <label htmlFor="isActive" className="ml-2 block text-sm text-ink-primary">
+              Active category
+            </label>
+          </div>
+
+          <div>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-[1.25rem]">Scoring Criteria</h3>
+              <button
+                type="button"
+                onClick={addCriterion}
+                className="btn-outline btn-sm"
+              >
+                <Plus className="h-4 w-4" />
+                Add Criterion
+              </button>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Scoring Criteria</h3>
-                <button
-                  type="button"
-                  onClick={addCriterion}
-                  className="inline-flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Criterion
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {criteria.map((criterion, index) => (
-                  <div key={criterion.id} className="p-4 border border-gray-200 rounded-lg bg-gray-50">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Name
-                        </label>
-                        <input
-                          type="text"
-                          value={criterion.name}
-                          onChange={(e) => updateCriterion(criterion.id, 'name', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Weight (%)
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={criterion.weight}
-                          onChange={(e) => updateCriterion(criterion.id, 'weight', parseInt(e.target.value) || 0)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Max Score
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={criterion.maxScore}
-                          onChange={(e) => updateCriterion(criterion.id, 'maxScore', parseInt(e.target.value) || 100)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          required
-                        />
-                      </div>
-
-                      <div className="flex items-end">
-                        <button
-                          type="button"
-                          onClick={() => removeCriterion(criterion.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-                          disabled={criteria.length <= 1}
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="mt-3">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Description
-                      </label>
+            <div className="space-y-4">
+              {criteria.map((criterion, index) => (
+                <div key={criterion.id} className="border border-rule-hairline bg-surface-warm p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <label className="field-label">Name</label>
                       <input
                         type="text"
-                        value={criterion.description}
-                        onChange={(e) => updateCriterion(criterion.id, 'description', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Description of scoring criterion"
+                        value={criterion.name}
+                        onChange={(e) => updateCriterion(criterion.id, 'name', e.target.value)}
+                        className="field"
                         required
                       />
                     </div>
+
+                    <div>
+                      <label className="field-label">Weight (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={criterion.weight}
+                        onChange={(e) => updateCriterion(criterion.id, 'weight', parseInt(e.target.value) || 0)}
+                        className="field"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="field-label">Max Score</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={criterion.maxScore}
+                        onChange={(e) => updateCriterion(criterion.id, 'maxScore', parseInt(e.target.value) || 100)}
+                        className="field"
+                        required
+                      />
+                    </div>
+
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={() => removeCriterion(criterion.id)}
+                        className="icon-btn text-status-error-fg hover:text-status-error-fg"
+                        disabled={criteria.length <= 1}
+                        aria-label="Remove criterion"
+                        title="Remove criterion"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
-                ))}
-              </div>
 
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  Total Weight: <span className={`font-semibold ${totalWeight === 100 ? 'text-green-600' : 'text-red-600'}`}>
-                    {totalWeight}%
+                  <div className="mt-3">
+                    <label className="field-label">Description</label>
+                    <input
+                      type="text"
+                      value={criterion.description}
+                      onChange={(e) => updateCriterion(criterion.id, 'description', e.target.value)}
+                      className="field"
+                      placeholder="Description of scoring criterion"
+                      required
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 border border-rule-hairline bg-surface-warm p-3">
+              <p className="text-sm text-ink-body">
+                Total Weight: <span className={`font-semibold ${totalWeight === 100 ? 'text-status-open-fg' : 'text-status-error-fg'}`}>
+                  {totalWeight}%
+                </span>
+                {totalWeight !== 100 && (
+                  <span className="ml-2 text-status-error-fg">
+                    (Must equal 100%)
                   </span>
-                  {totalWeight !== 100 && (
-                    <span className="text-red-600 ml-2">
-                      (Must equal 100%)
-                    </span>
-                  )}
-                </p>
-              </div>
+                )}
+              </p>
             </div>
+          </div>
 
-            <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-6 py-2 bg-piano-wine text-white rounded-lg hover:bg-piano-wine/90 focus:ring-2 focus:ring-piano-wine focus:ring-offset-2"
-              >
-                {category ? 'Update' : 'Create'} Category
-              </button>
-            </div>
-          </form>
-        </div>
+          <div className="flex flex-wrap justify-end gap-3 border-t border-rule-hairline pt-6">
+            <button type="button" onClick={onClose} className="btn-ghost">
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              {category ? 'Update' : 'Create'} Category
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

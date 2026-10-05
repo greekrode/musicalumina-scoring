@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Edit2, Trash2, Save, Trophy, Award } from 'lucide-react';
+import { X, Plus, Edit2, Trash2, Save, Trophy, Award, ChevronDown } from 'lucide-react';
 import { useEventCategories } from '../../hooks/useEventCategories';
 import { usePrizeConfigurations } from '../../hooks/usePrizeConfigurations';
 import { PrizeConfiguration } from '../../types';
 import { useEvents } from '../../hooks/useEvents';
 import { supabase } from '../../lib/supabase';
+import { Eyebrow } from '../shared/StateCard';
 
 interface PrizeConfigurationManagerProps {
   eventId: string;
@@ -237,72 +238,70 @@ export default function PrizeConfigurationManager({ eventId, eventTitle, onClose
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden border border-piano-gold/20">
-        <div className="flex items-center justify-between p-6 border-b border-piano-gold/30 bg-piano-cream/20">
-          <h2 className="text-2xl font-bold text-piano-wine flex items-center">
-            <Trophy className="w-6 h-6 mr-2" />
-            Prize Configuration - {eventTitle}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-piano-gold/20 rounded-lg transition-colors duration-200 text-piano-wine"
-          >
-            <X className="w-6 h-6" />
+    <div className="overlay">
+      <div className="sheet sm:max-w-6xl" role="dialog" aria-modal="true">
+        <div className="flex items-start justify-between px-6 pt-6">
+          <div>
+            <Eyebrow>Prizes</Eyebrow>
+            <h2 className="mt-3 flex items-center text-[1.5rem]">
+              <Trophy className="mr-2 h-5 w-5 text-ink-accent" />
+              Prize Configuration - {eventTitle}
+            </h2>
+          </div>
+          <button onClick={onClose} className="icon-btn" aria-label="Close" title="Close">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <div className="px-6 pb-6 pt-6">
           {/* Category/Subcategory Selection */}
-          <div className="mb-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category & Subcategory
-              </label>
-              <select
-                value={selectedCategoryCombo}
-                onChange={(e) => setSelectedCategoryCombo(e.target.value)}
-                className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
-                disabled={categoriesLoading}
-              >
-                <option value="">Select Category & Subcategory</option>
-                {categories.map((category) => (
-                  <option key={`${category.categoryId}|${category.subcategoryId}`} value={`${category.categoryId}|${category.subcategoryId}`}>
-                    {category.displayName}
-                  </option>
-                ))}
-              </select>
+              <label className="field-label">Category & Subcategory</label>
+              <div className="relative">
+                <select
+                  value={selectedCategoryCombo}
+                  onChange={(e) => setSelectedCategoryCombo(e.target.value)}
+                  className="field"
+                  disabled={categoriesLoading}
+                >
+                  <option value="">Select Category & Subcategory</option>
+                  {categories.map((category) => (
+                    <option key={`${category.categoryId}|${category.subcategoryId}`} value={`${category.categoryId}|${category.subcategoryId}`}>
+                      {category.displayName}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+              </div>
             </div>
 
             {/* Copy Configuration Section */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Copy From Category
-              </label>
-              <select
-                value={sourceCategoryCombo}
-                onChange={(e) => setSourceCategoryCombo(e.target.value)}
-                className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
-                disabled={categoriesLoading}
-              >
-                <option value="">Select source to copy from</option>
-                {categories.map((category) => (
-                  <option key={`source-${category.categoryId}|${category.subcategoryId}`} value={`${category.categoryId}|${category.subcategoryId}`}>
-                    {category.displayName}
-                  </option>
-                ))}
-              </select>
+              <label className="field-label">Copy From Category</label>
+              <div className="relative">
+                <select
+                  value={sourceCategoryCombo}
+                  onChange={(e) => setSourceCategoryCombo(e.target.value)}
+                  className="field"
+                  disabled={categoriesLoading}
+                >
+                  <option value="">Select source to copy from</option>
+                  {categories.map((category) => (
+                    <option key={`source-${category.categoryId}|${category.subcategoryId}`} value={`${category.categoryId}|${category.subcategoryId}`}>
+                      {category.displayName}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+              </div>
             </div>
 
             <div className="flex items-end">
               <button
                 onClick={handleCopyToAll}
                 disabled={!sourceCategoryCombo || copyInProgress || sourceConfigurations.length === 0}
-                className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${
-                  !sourceCategoryCombo || copyInProgress || sourceConfigurations.length === 0
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-piano-wine text-white hover:bg-piano-wine/90'
-                }`}
+                className="btn-secondary w-full"
               >
                 {copyInProgress ? 'Copying...' : `Copy to All Others (${categories.length - 1})`}
               </button>
@@ -311,64 +310,58 @@ export default function PrizeConfigurationManager({ eventId, eventTitle, onClose
 
           {/* Show copy information */}
           {sourceCategoryCombo && (
-            <div className="mb-4 p-3 bg-piano-cream/50 border border-piano-gold/30 rounded-lg">
-              <p className="text-sm text-piano-wine">
+            <div className="mb-4 border border-rule-hairline bg-surface-warm p-3">
+              <p className="text-sm text-ink-primary">
                 <strong>Ready to copy:</strong> {sourceConfigurations.length} prize configuration(s) from the selected source to {categories.length - 1} remaining categories.
                 {sourceConfigurations.length === 0 && (
-                  <span className="text-red-600"> No configurations found in source category.</span>
+                  <span className="text-status-error-fg"> No configurations found in source category.</span>
                 )}
               </p>
             </div>
           )}
 
           {selectedCategoryCombo && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               {/* Prize Configuration Form */}
-              <div className="bg-piano-cream/20 p-4 rounded-lg border border-piano-gold/30">
-                <h3 className="text-lg font-semibold mb-4 text-piano-wine">
+              <div className="card border-t-2 border-t-marigold p-4">
+                <h3 className="mb-4 text-[1.25rem]">
                   {editingConfig ? 'Edit Prize Configuration' : 'Add New Prize Configuration'}
                 </h3>
-                
+
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Prize Level Name *
-                    </label>
+                    <label className="field-label">Prize Level Name *</label>
                     <input
                       type="text"
                       value={formData.prize_level}
                       onChange={(e) => setFormData({ ...formData, prize_level: e.target.value })}
                       placeholder="e.g., Gold Medal, First Place, Honorable Mention"
-                      className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
+                      className="field"
                       required
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Max Winners *
-                      </label>
+                      <label className="field-label">Max Winners *</label>
                       <input
                         type="number"
                         min="1"
                         value={formData.max_winners}
                         onChange={(e) => setFormData({ ...formData, max_winners: parseInt(e.target.value) || 1 })}
-                        className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
+                        className="field"
                         required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Display Order *
-                      </label>
+                      <label className="field-label">Display Order *</label>
                       <input
                         type="number"
                         min="1"
                         value={formData.display_order}
                         onChange={(e) => setFormData({ ...formData, display_order: parseInt(e.target.value) || 1 })}
-                        className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
+                        className="field"
                         required
                       />
                     </div>
@@ -376,9 +369,7 @@ export default function PrizeConfigurationManager({ eventId, eventTitle, onClose
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Min Score
-                      </label>
+                      <label className="field-label">Min Score</label>
                       <input
                         type="number"
                         step="0.01"
@@ -387,14 +378,12 @@ export default function PrizeConfigurationManager({ eventId, eventTitle, onClose
                         value={formData.min_score}
                         onChange={(e) => setFormData({ ...formData, min_score: e.target.value })}
                         placeholder="e.g., 95.00"
-                        className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
+                        className="field"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Max Score
-                      </label>
+                      <label className="field-label">Max Score</label>
                       <input
                         type="number"
                         step="0.01"
@@ -403,25 +392,18 @@ export default function PrizeConfigurationManager({ eventId, eventTitle, onClose
                         value={formData.max_score}
                         onChange={(e) => setFormData({ ...formData, max_score: e.target.value })}
                         placeholder="e.g., 100.00"
-                        className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
+                        className="field"
                       />
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      type="submit"
-                      className="flex-1 bg-piano-wine text-white py-2 px-4 rounded-lg hover:bg-piano-wine/90 focus:outline-none focus:ring-2 focus:ring-piano-gold"
-                    >
+                  <div className="flex flex-wrap gap-3">
+                    <button type="submit" className="btn-primary flex-1">
                       {editingConfig ? 'Update Configuration' : 'Add Configuration'}
                     </button>
-                    
+
                     {editingConfig && (
-                      <button
-                        type="button"
-                        onClick={cancelEdit}
-                        className="px-4 py-2 border border-piano-gold/30 text-piano-wine rounded-lg hover:bg-piano-cream/20 focus:outline-none focus:ring-2 focus:ring-piano-gold"
-                      >
+                      <button type="button" onClick={cancelEdit} className="btn-outline">
                         Cancel
                       </button>
                     )}
@@ -431,15 +413,15 @@ export default function PrizeConfigurationManager({ eventId, eventTitle, onClose
 
               {/* Existing Configurations List */}
               <div>
-                <h3 className="text-lg font-semibold mb-4 text-piano-wine">Current Prize Configurations</h3>
-                
-                                  {configsLoading ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-piano-wine mx-auto"></div>
-                      <p className="mt-2 text-gray-600">Loading configurations...</p>
-                    </div>
+                <h3 className="mb-4 text-[1.25rem]">Current Prize Configurations</h3>
+
+                {configsLoading ? (
+                  <div className="py-8 text-center">
+                    <div className="spinner mx-auto" />
+                    <p className="mt-2 text-ink-muted">Loading configurations...</p>
+                  </div>
                 ) : prizeConfigurations.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="py-8 text-center text-ink-muted">
                     No prize configurations found for this category/subcategory.
                   </div>
                 ) : (
@@ -449,12 +431,12 @@ export default function PrizeConfigurationManager({ eventId, eventTitle, onClose
                       .map((config) => (
                         <div
                           key={config.id}
-                          className="bg-white p-4 rounded-lg border border-piano-gold/20 hover:border-piano-gold/40 hover:bg-piano-cream/10 transition-colors"
+                          className="card p-4 transition-colors hover:bg-surface-warm/60"
                         >
-                          <div className="flex justify-between items-start">
+                          <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h4 className="font-semibold text-piano-wine">{config.prize_level}</h4>
-                              <div className="text-sm text-gray-600 mt-1">
+                              <h4 className="font-semibold text-ink-primary">{config.prize_level}</h4>
+                              <div className="mt-1 text-sm text-ink-muted">
                                 <p>Max Winners: {config.max_winners}</p>
                                 {config.min_score !== null && config.max_score !== null && (
                                   <p>Score Range: {config.min_score} - {config.max_score}</p>
@@ -462,21 +444,23 @@ export default function PrizeConfigurationManager({ eventId, eventTitle, onClose
                                 <p>Display Order: {config.display_order}</p>
                               </div>
                             </div>
-                            
-                            <div className="flex gap-2 ml-4">
+
+                            <div className="ml-4 flex gap-1">
                               <button
                                 onClick={() => handleEdit(config)}
-                                className="p-2 text-piano-gold hover:text-piano-wine hover:bg-piano-gold/10 rounded-lg transition-colors"
+                                className="icon-btn"
                                 title="Edit configuration"
+                                aria-label="Edit configuration"
                               >
-                                <Edit2 className="w-4 h-4" />
+                                <Edit2 className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => handleDelete(config)}
-                                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+                                className="icon-btn text-status-error-fg hover:text-status-error-fg"
                                 title="Delete configuration"
+                                aria-label="Delete configuration"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="h-4 w-4" />
                               </button>
                             </div>
                           </div>
@@ -489,10 +473,10 @@ export default function PrizeConfigurationManager({ eventId, eventTitle, onClose
           )}
 
           {!selectedCategoryCombo && (
-            <div className="text-center py-12">
-              <Award className="mx-auto h-12 w-12 text-piano-wine/40" />
-              <h3 className="mt-2 text-sm font-medium text-piano-wine">No category selected</h3>
-              <p className="mt-1 text-sm text-gray-500">
+            <div className="py-12 text-center">
+              <Award className="mx-auto h-12 w-12 text-ink-subtle" />
+              <h3 className="mt-2 text-[1.25rem]">No category selected</h3>
+              <p className="mt-1 text-sm text-ink-muted">
                 Please select a category/subcategory to manage prize configurations.
               </p>
             </div>
@@ -501,4 +485,4 @@ export default function PrizeConfigurationManager({ eventId, eventTitle, onClose
       </div>
     </div>
   );
-} 
+}

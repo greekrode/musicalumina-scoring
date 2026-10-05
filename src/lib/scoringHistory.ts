@@ -1,55 +1,7 @@
 import { supabase } from './supabase';
 import { EventScoringHistory } from '../types';
 
-export interface LogHistoryParams {
-  tableName: 'event_scoring' | 'event_scoring_details';
-  recordId: string;
-  operation: 'INSERT' | 'UPDATE' | 'DELETE';
-  beforeData?: any;
-  afterData?: any;
-  changedBy: string;
-  juryName?: string;
-  eventId?: string;
-  registrationId?: string;
-  participantName?: string;
-}
-
-export async function logScoringHistory(params: LogHistoryParams): Promise<void> {
-  try {
-          // Extract category info from the data if it's a scoring record
-      let categoryId = null;
-      let subcategoryId = null;
-      
-      if (params.tableName === 'event_scoring' && params.afterData) {
-        categoryId = params.afterData.category_id;
-        subcategoryId = params.afterData.subcategory_id;
-      }
-
-      const { error } = await supabase
-        .from('event_scoring_history')
-        .insert({
-          table_name: params.tableName,
-          record_id: params.recordId,
-          operation: params.operation,
-          before_data: params.beforeData,
-          after_data: params.afterData,
-          changed_by: params.changedBy,
-          jury_name: params.juryName,
-          event_id: params.eventId,
-          registration_id: params.registrationId,
-          participant_name: params.participantName,
-          category_id: categoryId,
-          subcategory_id: subcategoryId,
-        });
-
-    if (error) {
-      console.error('Failed to log scoring history:', error);
-    }
-  } catch (err) {
-    console.error('Error logging scoring history:', err);
-  }
-}
-
+// Jury history rows are written server-side by submit_jury_score.
 export async function getScoringHistory(filters?: {
   eventId?: string;
   registrationId?: string;

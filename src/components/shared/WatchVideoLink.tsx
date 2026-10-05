@@ -13,7 +13,7 @@ interface WatchVideoLinkProps {
  */
 export default function WatchVideoLink({ videoUrl }: WatchVideoLinkProps) {
   if (!videoUrl) {
-    return <span className="text-sm text-gray-400">--</span>;
+    return <span className="text-sm text-ink-subtle">—</span>;
   }
 
   return (
@@ -21,11 +21,11 @@ export default function WatchVideoLink({ videoUrl }: WatchVideoLinkProps) {
       href={videoUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-piano-gold/10 text-piano-wine border border-piano-gold/30 hover:bg-piano-gold/20 focus:ring-2 focus:ring-piano-gold focus:ring-offset-2 transition-colors"
+      className="type-label inline-flex items-center gap-1.5 border border-rule-subtle px-2.5 py-1.5 text-ink-primary transition-colors hover:border-marigold hover:bg-marigold-50"
       title="Open performance video in a new tab"
     >
-      <PlayCircle className="w-4 h-4 mr-1" />
-      Watch Video
+      <PlayCircle className="h-3.5 w-3.5" aria-hidden />
+      Watch
     </a>
   );
 }

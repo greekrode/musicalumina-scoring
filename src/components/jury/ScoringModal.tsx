@@ -1,427 +1,259 @@
-import React, { useState, useEffect } from "react";
-import { X, Save, Music, AlertCircle, Clock, Clapperboard, FileText } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { AlertCircle, Clapperboard, CloudOff, FileText, Lock, Save, X } from "lucide-react";
 import { useApp } from "../../context/AppContext";
-import { Participant, Registration } from "../../types";
+import { Registration } from "../../types";
 import { supabase } from "../../lib/supabase";
 import { useScoringAspects } from "../../hooks/useScoringAspects";
-import { logScoringHistory } from "../../lib/scoringHistory";
+import { submitScore, useOutbox } from "../../lib/scoreOutbox";
 import { normalizeExternalUrl } from "../../utils/url";
+import { Eyebrow } from "../shared/StateCard";
 
 interface ScoringModalProps {
-  participant: Participant | Registration;
-  category: {
-    id: string;
-    name: string;
-    eventId?: string;
-  };
-  subcategoryId: string;
+  participant: Registration;
+  eventId?: string;
   onClose: () => void;
 }
 
-export default function ScoringModal({
-  participant,
-  category,
-  subcategoryId,
-  onClose,
-}: ScoringModalProps) {
+export default function ScoringModal({ participant, eventId, onClose }: ScoringModalProps) {
   const { state } = useApp();
-  const [finalScore, setFinalScore] = useState<number | undefined>(undefined);
-  const [remarks, setRemarks] = useState<string>("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string>("");
-  const [existingScoringId, setExistingScoringId] = useState<string | null>(
-    null
-  );
+  const outbox = useOutbox();
+  const queued = outbox.queued[participant.id];
+
+  const [finalScore, setFinalScore] = useState<number | undefined>(queued?.finalScore);
+  const [remarks, setRemarks] = useState<string>(queued?.remarks ?? "");
+  const [hasExisting, setHasExisting] = useState(Boolean(queued));
   const [isFinalized, setIsFinalized] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  const registrationId = "id" in participant ? participant.id : "";
-  const participantName =
-    "participant_name" in participant
-      ? participant.participant_name
-      : participant.fullName;
-  const piece =
-    "participant_name" in participant
-      ? participant.song_title || "Not specified"
-      : "piece" in participant
-      ? participant.piece || "Not specified"
-      : "Not specified";
+  const piece = participant.song_title || "Not specified";
   const duration =
-    "participant_name" in participant
-      ? participant.song_duration || "Not specified"
-      : "duration" in participant
-      ? `${participant.duration} min`
-      : "Not specified";
+    participant.song_duration && !["0", "0:00"].includes(participant.song_duration) ? participant.song_duration : null;
+  const videoUrl = normalizeExternalUrl(participant.video_url);
+  const rawPdf = participant.song_pdf_url as string | string[] | undefined;
+  const pdfUrl = normalizeExternalUrl(Array.isArray(rawPdf) ? rawPdf[0] : rawPdf);
 
-  // Derive video URL when available (only present on Registration type)
-  const rawVideoUrl =
-    "participant_name" in participant ? participant.video_url : undefined;
-  const normalizedVideoUrl = normalizeExternalUrl(rawVideoUrl);
+  const { aspects } = useScoringAspects(eventId);
 
-  // Derive repertoire PDF URL (supports string or single-item array)
-  const rawSongPdf =
-    "participant_name" in participant ? participant.song_pdf_url : undefined;
-  const rawPdfUrl = Array.isArray(rawSongPdf)
-    ? rawSongPdf[0]
-    : typeof rawSongPdf === "string"
-    ? rawSongPdf
-    : undefined;
-  const normalizedPdfUrl = normalizeExternalUrl(rawPdfUrl);
-
-  const { aspects, loading: aspectsLoading } = useScoringAspects(
-    category.eventId
-  );
-
-  // Load existing score if any
+  // Server copy. A score still waiting in the outbox is newer, so it wins.
   useEffect(() => {
-    if (registrationId && state.user?.id) {
-      loadExistingScore();
-    }
-  }, [registrationId, state.user?.id]);
-
-  const loadExistingScore = async () => {
-    try {
-      const { data: scoringData, error: scoringError } = await supabase
-        .from("event_scoring")
-        .select("id, final_score, remarks, finalized")
-        .eq("registration_id", registrationId)
-        .eq("jury_id", state.user?.id)
-        .maybeSingle();
-
-      if (scoringError) {
-        setError("Failed to load existing score. Please close and try again.");
-        return;
+    if (!state.user?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("event_scoring")
+          .select("final_score, remarks, finalized")
+          .eq("registration_id", participant.id)
+          .eq("jury_id", state.user!.id)
+          .maybeSingle();
+        if (cancelled) return;
+        if (error) throw error;
+        if (!data) return;
+        setHasExisting(true);
+        setIsFinalized(Boolean(data.finalized));
+        if (!queued) {
+          setFinalScore(Number(data.final_score));
+          setRemarks(data.remarks || "");
+        }
+      } catch {
+        if (!cancelled) setLoadFailed(true);
       }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Load once per participant; later outbox changes must not overwrite edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participant.id, state.user?.id]);
 
-      if (scoringData) {
-        setExistingScoringId(scoringData.id);
-        setIsFinalized(scoringData.finalized);
-        setFinalScore(scoringData.final_score);
-        setRemarks(scoringData.remarks || "");
-      }
-    } catch (err) {
-      console.error("Error loading existing score:", err);
-    }
-  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !isSubmitting && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isSubmitting, onClose]);
 
   const handleScoreChange = (value: string) => {
-    if (value === "") {
-      setFinalScore(undefined);
-      setError("");
-      return;
-    }
-    const numValue = parseFloat(value);
-    if (isNaN(numValue)) {
-      return;
-    }
-    // Round to 1 decimal place
-    const roundedValue = Math.round(numValue * 10) / 10;
-    const clampedValue = Math.max(0, Math.min(100, roundedValue));
-    setFinalScore(clampedValue);
     setError("");
-  };
-
-  const validateScore = () => {
-    if (finalScore === undefined || finalScore === null) {
-      setError("Please enter a score");
-      return false;
-    }
-    if (finalScore < 0 || finalScore > 100) {
-      setError("Score must be between 0 and 100");
-      return false;
-    }
-    if (finalScore === 0) {
-      setError("Please enter a score greater than 0");
-      return false;
-    }
-    return true;
+    if (value === "") return setFinalScore(undefined);
+    const num = parseFloat(value);
+    if (isNaN(num)) return;
+    setFinalScore(Math.max(0, Math.min(100, Math.round(num * 10) / 10)));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateScore() || isFinalized) {
+    if (isFinalized || isSubmitting) return;
+    if (finalScore === undefined || finalScore <= 0 || finalScore > 100) {
+      setError("Enter a score between 0.1 and 100.");
       return;
     }
 
     setIsSubmitting(true);
+    const outcome = await submitScore({
+      registrationId: participant.id,
+      participantName: participant.participant_name,
+      finalScore,
+      remarks,
+      juryName: state.user?.name ?? "",
+    });
+    setIsSubmitting(false);
 
-    try {
-      if (existingScoringId) {
-        // Get existing data for history logging
-        const { data: existingScoring } = await supabase
-          .from("event_scoring")
-          .select("*")
-          .eq("id", existingScoringId)
-          .single();
-
-        // Update existing score
-        const updatedData = {
-          final_score: finalScore,
-          remarks: remarks,
-          updated_at: new Date().toISOString(),
-        };
-
-        const { error } = await supabase
-          .from("event_scoring")
-          .update(updatedData)
-          .eq("id", existingScoringId);
-
-        if (error) throw error;
-
-        // Log history for scoring update
-        await logScoringHistory({
-          tableName: "event_scoring",
-          recordId: existingScoringId,
-          operation: "UPDATE",
-          beforeData: existingScoring,
-          afterData: { ...existingScoring, ...updatedData },
-          changedBy: state.user?.id || "",
-          juryName: state.user?.name,
-          eventId: category.eventId,
-          registrationId: registrationId,
-          participantName: participantName,
-        });
-      } else {
-        // Create new scoring
-        const newScoringData = {
-          registration_id: registrationId,
-          category_id: category.id,
-          subcategory_id: subcategoryId,
-          jury_id: state.user?.id,
-          jury_name: state.user?.name,
-          final_score: finalScore,
-          remarks: remarks,
-          finalized: false,
-        };
-
-        const { data: scoringData, error: scoringError } = await supabase
-          .from("event_scoring")
-          .insert(newScoringData)
-          .select()
-          .single();
-
-        if (scoringError) throw scoringError;
-
-        // Log history for new scoring record
-        await logScoringHistory({
-          tableName: "event_scoring",
-          recordId: scoringData.id,
-          operation: "INSERT",
-          afterData: scoringData,
-          changedBy: state.user?.id || "",
-          juryName: state.user?.name,
-          eventId: category.eventId,
-          registrationId: registrationId,
-          participantName: participantName,
-        });
-      }
-
-      onClose();
-    } catch (err) {
-      console.error("Error saving score:", err);
-      setError("Failed to save score. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+    if (outcome.status === "rejected") {
+      setError(outcome.reason);
+      if (outcome.reason.includes("finalized")) setIsFinalized(true);
+      return;
     }
+    onClose();
   };
 
-  if (aspectsLoading) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4">
-          <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-piano-wine mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading scoring criteria...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="bg-piano-wine p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <Music className="w-6 h-6" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold">Score Participant</h2>
-                <p className="text-piano-cream/80">{participantName}</p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+    <div
+      className="overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="scoring-title"
+      onClick={(e) => e.target === e.currentTarget && !isSubmitting && onClose()}
+    >
+      <div className="sheet sm:max-w-2xl">
+        <div className="flex items-start justify-between gap-4 px-6 pt-6">
+          <div className="min-w-0">
+            <Eyebrow>{hasExisting ? "Update score" : "Score performance"}</Eyebrow>
+            <h2 id="scoring-title" className="mt-3 text-[clamp(1.375rem,1.1rem+1vw,1.875rem)]">
+              {participant.participant_name}
+            </h2>
           </div>
-
-          <div className="mt-4 p-4 bg-white/10 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-piano-cream/80">
-                Performance Piece
-              </span>
-              <div className="flex items-center text-sm text-piano-cream/80">
-                <Clock className="w-4 h-4 mr-1" />
-                {duration}
-              </div>
-            </div>
-            <p className="text-white font-medium">{piece}</p>
-            {(normalizedVideoUrl || normalizedPdfUrl) && (
-              <div className="mt-1 flex items-center gap-4">
-                {normalizedVideoUrl && (
-                  <a
-                    href={normalizedVideoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center text-piano-gold hover:text-piano-gold/80"
-                  >
-                    <Clapperboard className="w-4 h-4 mr-1" />
-                    Video recording
-                  </a>
-                )}
-                {normalizedPdfUrl && (
-                  <a
-                    href={normalizedPdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center text-piano-gold hover:text-piano-gold/80"
-                  >
-                    <FileText className="w-4 h-4 mr-1" />
-                    Repertoire
-                  </a>
-                )}
-              </div>
-            )}
-          </div>
+          <button onClick={onClose} disabled={isSubmitting} className="icon-btn -mr-2" aria-label="Close">
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
+        <div className="mx-6 mt-5 border-y border-rule-hairline py-4">
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="type-label text-ink-muted">Performance piece</span>
+            {duration && <span className="text-[0.8125rem] text-ink-muted">{duration}</span>}
+          </div>
+          <p className="mt-2 font-serif text-[1.0625rem] text-ink-primary">{piece}</p>
+          {(videoUrl || pdfUrl) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {videoUrl && (
+                <a href={videoUrl} target="_blank" rel="noopener noreferrer" className="btn-outline btn-sm">
+                  <Clapperboard className="h-4 w-4" aria-hidden /> Video recording
+                </a>
+              )}
+              {pdfUrl && (
+                <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="btn-outline btn-sm">
+                  <FileText className="h-4 w-4" aria-hidden /> Repertoire
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6 px-6 pb-6 pt-6">
           {isFinalized && (
-            <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-              <div className="flex items-center">
-                <AlertCircle className="w-5 h-5 text-orange-600 mr-2" />
-                <div>
-                  <h3 className="text-sm font-medium text-orange-800">
-                    Score Finalized
-                  </h3>
-                  <p className="text-sm text-orange-600">
-                    This score has been finalized and cannot be modified.
-                  </p>
-                </div>
-              </div>
+            <div className="flex gap-3 border-l-2 border-marigold bg-status-upcoming-bg px-4 py-3 text-[0.875rem] text-status-upcoming-fg">
+              <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <p>This score has been finalized and can no longer be changed.</p>
             </div>
           )}
-
-          {/* Scoring Aspects (Reference Only) */}
-          {aspects.length > 0 && (
-            <div className="mb-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">
-                Scoring Criteria (Reference)
-              </h3>
-              <div className="space-y-2">
-                {aspects.map((aspect) => (
-                  <div
-                    key={aspect.id}
-                    className="p-2 bg-gray-50 rounded border"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className="text-xs font-medium text-gray-800">
-                        {aspect.name}
-                      </h4>
-                      <span className="text-xs text-gray-500">
-                        {aspect.weight}%
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-600 leading-relaxed">
-                      {aspect.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Final Score Input */}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-lg font-semibold text-piano-wine mb-1">
-                Final Score (0-100)
-              </label>
-              <p className="text-sm text-gray-600 mb-3">
-                Maximum one decimal place allowed (e.g., 85.5)
+          {loadFailed && !isFinalized && (
+            <div className="flex gap-3 border-l-2 border-rule-strong bg-surface-warm px-4 py-3 text-[0.875rem] text-ink-muted">
+              <CloudOff className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <p>
+                You're offline, so your earlier score for this participant could not be loaded. A score you save now
+                stays on this device and replaces it once the connection is back.
               </p>
-              <div className="relative">
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
-                  value={finalScore ?? ""}
-                  onChange={(e) => handleScoreChange(e.target.value)}
-                  disabled={isFinalized}
-                  className="w-full px-4 py-3 text-xl font-bold text-center border-2 border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  placeholder="Enter score..."
-                />
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg">
-                  / 100
-                </div>
-              </div>
-              {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
             </div>
+          )}
 
-            {/* Remarks Field */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Remarks (Optional)
-              </label>
-              <textarea
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
+          <div>
+            <label htmlFor="final-score" className="field-label">
+              Final score
+            </label>
+            <div className="relative">
+              <input
+                id="final-score"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                max="100"
+                step="0.1"
+                autoFocus={!isFinalized}
+                value={finalScore ?? ""}
+                onChange={(e) => handleScoreChange(e.target.value)}
                 disabled={isFinalized}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed resize-none"
-                placeholder="Add any comments or feedback for this performance..."
+                aria-describedby="score-hint"
+                className="field h-20 pr-20 text-center font-serif text-[2.5rem] text-ink-primary"
+                placeholder="—"
               />
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[0.9375rem] text-ink-subtle">
+                / 100
+              </span>
             </div>
+            <p id="score-hint" className="mt-2 text-[0.8125rem] text-ink-muted">
+              One decimal place, e.g. 85.5
+            </p>
+          </div>
 
-            {/* Submit Button */}
-            {!isFinalized && (
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-3 bg-piano-wine text-white rounded-lg hover:bg-piano-wine/90 focus:ring-2 focus:ring-piano-wine focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      {existingScoringId ? "Update Score" : "Submit Score"}
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-          </form>
-        </div>
+          <div>
+            <label htmlFor="remarks" className="field-label">
+              Remarks <span className="normal-case tracking-normal text-ink-subtle">(optional)</span>
+            </label>
+            <textarea
+              id="remarks"
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              disabled={isFinalized}
+              maxLength={2000}
+              rows={3}
+              className="field resize-none"
+              placeholder="Comments or feedback for this performance"
+            />
+          </div>
+
+          {aspects.length > 0 && (
+            <details className="group border border-rule-hairline">
+              <summary className="type-label flex cursor-pointer list-none items-center justify-between px-4 py-3 text-ink-muted hover:text-ink-primary">
+                Scoring criteria
+                <span className="text-ink-subtle group-open:hidden">Show</span>
+                <span className="hidden text-ink-subtle group-open:inline">Hide</span>
+              </summary>
+              <ul className="divide-y divide-rule-hairline border-t border-rule-hairline">
+                {aspects.map((aspect) => (
+                  <li key={aspect.id} className="px-4 py-3">
+                    <div className="flex items-baseline justify-between gap-4">
+                      <span className="text-[0.9375rem] font-semibold text-ink-primary">{aspect.name}</span>
+                      <span className="text-[0.8125rem] text-ink-accent">{aspect.weight}%</span>
+                    </div>
+                    {aspect.description && (
+                      <p className="mt-1 text-[0.8125rem] leading-relaxed text-ink-muted">{aspect.description}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+
+          {error && (
+            <p role="alert" className="flex items-center gap-2 text-[0.875rem] text-status-error-fg">
+              <AlertCircle className="h-4 w-4 shrink-0" aria-hidden /> {error}
+            </p>
+          )}
+
+          {!isFinalized && (
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button type="button" onClick={onClose} disabled={isSubmitting} className="btn-ghost">
+                Cancel
+              </button>
+              <button type="submit" disabled={isSubmitting} className="btn-secondary">
+                {isSubmitting ? <span className="spinner h-4 w-4 border-offWhite border-t-transparent" /> : <Save className="h-4 w-4" />}
+                {isSubmitting ? "Saving…" : hasExisting ? "Update score" : "Submit score"}
+              </button>
+            </div>
+          )}
+        </form>
       </div>
     </div>
   );

@@ -1,20 +1,16 @@
-import {
-  CheckCircle,
-  ChevronDown,
-  Clock,
-  Filter,
-  Pen,
-  Search,
-} from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import { AlertCircle, ChevronDown, CloudOff, Lock, Pen, Search, X } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useEventCategories } from '../../hooks/useEventCategories';
 import { useParticipants } from '../../hooks/useParticipants';
+import { useRealtimeScoring } from '../../hooks/useRealtimeScoring';
 import { useSongs } from '../../hooks/useSongs';
 import { useSupabaseQuery } from '../../hooks/useSupabaseQuery';
+import { dismissRejected, useOutbox } from '../../lib/scoreOutbox';
 import { supabase } from '../../lib/supabase';
 import { Registration } from '../../types';
 import { normalizeExternalUrl } from '../../utils/url';
+import { Eyebrow } from '../shared/StateCard';
 import WatchVideoLink from '../shared/WatchVideoLink';
 import ScoringModal from './ScoringModal';
 
@@ -22,9 +18,19 @@ interface ParticipantScoreData {
   hasScore: boolean;
   finalized: boolean;
   finalScore: number;
+  /** Saved on this device, not yet on the server. */
+  pending?: boolean;
 }
 
-// --- Memoized row component ---
+type StatusFilter = 'all' | 'pending' | 'completed';
+
+function StatusPill({ score }: { score: ParticipantScoreData | undefined }) {
+  if (score?.finalized) return <span className="pill-muted"><Lock className="h-3 w-3" aria-hidden /> Finalized</span>;
+  if (score?.pending) return <span className="pill-wait"><CloudOff className="h-3 w-3" aria-hidden /> Saved offline</span>;
+  if (score?.hasScore) return <span className="pill-ok">Scored</span>;
+  return <span className="pill-muted">To score</span>;
+}
+
 interface ParticipantRowProps {
   participant: Registration;
   index: number;
@@ -40,141 +46,76 @@ const ParticipantRow = React.memo(function ParticipantRow({
   getSongWithIndex,
   onScore,
 }: ParticipantRowProps) {
-  const hasScore = scoreData?.hasScore || false;
-  const status = hasScore ? 'completed' : 'pending';
-  const videoUrl = normalizeExternalUrl(participant.video_url);
+  const duration =
+    participant.song_duration && !['0', '0:00'].includes(participant.song_duration) ? participant.song_duration : null;
+  const finalized = Boolean(scoreData?.finalized);
 
   return (
-    <tr className="hover:bg-piano-cream/30 transition-colors duration-150">
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div>
-          <div className="text-sm font-medium text-piano-wine">
-            {participant.participant_name}
-          </div>
-          <div className="text-sm text-gray-500">#{index + 1}</div>
+    <tr className="border-b border-rule-hairline transition-colors hover:bg-surface-warm/60">
+      <td className="table-cell w-12 font-serif text-ink-subtle">{String(index + 1).padStart(2, '0')}</td>
+      <td className="table-cell">
+        <div className="font-semibold text-ink-primary">{participant.participant_name}</div>
+        <div className="mt-0.5 text-[0.8125rem] text-ink-muted md:hidden">
+          {participant.song_title ? getSongWithIndex(participant.song_title) : 'Piece not specified'}
         </div>
       </td>
-      <td className="px-6 py-4">
-        <div className="text-sm text-gray-900">
-          {participant.song_title
-            ? getSongWithIndex(participant.song_title)
-            : 'Not specified'}
-        </div>
+      <td className="table-cell hidden text-ink-body md:table-cell">
+        {participant.song_title ? getSongWithIndex(participant.song_title) : <span className="text-ink-subtle">Not specified</span>}
       </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        {participant.song_duration &&
-        participant.song_duration !== '0' &&
-        participant.song_duration !== '0:00' ? (
-          <div className="text-sm text-gray-900">
-            {participant.song_duration}
-          </div>
-        ) : (
-          <div className="text-sm text-gray-400">--</div>
-        )}
+      <td className="table-cell hidden whitespace-nowrap text-ink-muted lg:table-cell">{duration ?? '—'}</td>
+      <td className="table-cell hidden whitespace-nowrap sm:table-cell">
+        <WatchVideoLink videoUrl={normalizeExternalUrl(participant.video_url)} />
       </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <WatchVideoLink videoUrl={videoUrl} />
+      <td className="table-cell whitespace-nowrap">
+        <StatusPill score={scoreData} />
       </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <span
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            status === 'completed'
-              ? 'bg-green-100 text-green-800'
-              : 'bg-amber-100 text-amber-800'
-          }`}
-        >
-          {status === 'completed' ? (
-            <>
-              <CheckCircle className="w-4 h-4 mr-1" />
-              Completed
-            </>
-          ) : (
-            <>
-              <Clock className="w-4 h-4 mr-1" />
-              Pending
-            </>
-          )}
-        </span>
+      <td className="table-cell whitespace-nowrap text-right font-serif text-[1.125rem] text-ink-primary">
+        {scoreData?.hasScore ? scoreData.finalScore.toFixed(1) : <span className="text-ink-subtle">—</span>}
       </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-sm font-medium text-piano-wine">
-          {hasScore ? scoreData!.finalScore.toFixed(2) : '--'}
-        </div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
+      <td className="table-cell w-14 text-right">
         <button
           onClick={() => onScore(participant)}
-          disabled={scoreData?.finalized}
-          className={`inline-flex items-center p-2 rounded-lg focus:ring-2 focus:ring-offset-2 transition-colors duration-200 ${
-            scoreData?.finalized
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-piano-wine text-white hover:bg-piano-wine/90 focus:ring-piano-wine'
-          }`}
-          title={
-            scoreData?.finalized
-              ? 'Score has been finalized and cannot be edited'
-              : 'Score participant'
-          }
+          disabled={finalized}
+          className="icon-btn border border-rule-subtle text-ink-primary hover:border-marigold hover:bg-marigold"
+          aria-label={finalized ? `Score for ${participant.participant_name} is finalized` : `Score ${participant.participant_name}`}
+          title={finalized ? 'Finalized: can no longer be edited' : 'Score participant'}
         >
-          <Pen className="w-4 h-4" />
+          <Pen className="h-4 w-4" />
         </button>
       </td>
     </tr>
   );
 });
 
-// --- Main component ---
 export default function JuryInterface() {
   const { state } = useApp();
+  const outbox = useOutbox();
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<
-    'all' | 'pending' | 'completed'
-  >('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedCategoryCombo, setSelectedCategoryCombo] = useState('');
-  const [scoringParticipant, setScoringParticipant] =
-    useState<Registration | null>(null);
+  const [scoringParticipant, setScoringParticipant] = useState<Registration | null>(null);
 
   const { categories, loading: categoriesLoading } = useEventCategories();
   const { getSongWithIndex } = useSongs();
 
-  const [categoryId, subcategoryId] = selectedCategoryCombo
-    ? selectedCategoryCombo.split('|')
-    : ['', ''];
-  const { participants, loading: participantsLoading } = useParticipants(
-    categoryId,
-    subcategoryId
-  );
+  const [categoryId, subcategoryId] = selectedCategoryCombo ? selectedCategoryCombo.split('|') : ['', ''];
+  const selectedCategory = categories.find((c) => c.categoryId === categoryId && c.subcategoryId === subcategoryId);
+  const { participants, loading: participantsLoading } = useParticipants(categoryId, subcategoryId);
 
-  // Batch fetch all scores for this jury in ONE query (fixes N+1)
-  const { data: participantScores, refetch: refetchScores } = useSupabaseQuery<
-    Record<string, ParticipantScoreData>
-  >(
+  // This jury's own scores for the category, in one query.
+  const { data: serverScores, refetch: refetchScores } = useSupabaseQuery<Record<string, ParticipantScoreData>>(
     async () => {
-      const participantIds = participants.map((p) => p.id);
       const { data, error } = await supabase
         .from('event_scoring')
         .select('registration_id, final_score, finalized')
-        .in('registration_id', participantIds)
+        .in('registration_id', participants.map((p) => p.id))
         .eq('jury_id', state.user!.id);
-
       if (error) throw error;
 
       const scores: Record<string, ParticipantScoreData> = {};
-
-      // Initialize all as no-score
-      for (const p of participants) {
-        scores[p.id] = { hasScore: false, finalized: false, finalScore: 0 };
-      }
-
-      // Fill in actual scores
       data?.forEach((row) => {
-        scores[row.registration_id] = {
-          hasScore: true,
-          finalized: row.finalized,
-          finalScore: row.final_score || 0,
-        };
+        scores[row.registration_id] = { hasScore: true, finalized: Boolean(row.finalized), finalScore: Number(row.final_score) || 0 };
       });
-
       return scores;
     },
     [participants, state.user?.id],
@@ -182,215 +123,212 @@ export default function JuryInterface() {
     { enabled: participants.length > 0 && !!state.user?.id }
   );
 
-  // Filter participants with useMemo
-  const filteredParticipants = useMemo(() => {
-    if (!categoryId || !subcategoryId) return [];
-
-    let filtered = participants;
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (p) =>
-          p.participant_name.toLowerCase().includes(term) ||
-          (p.song_title || '').toLowerCase().includes(term)
-      );
-    }
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((p) => {
-        const hasScore = participantScores[p.id]?.hasScore || false;
-        return statusFilter === 'completed' ? hasScore : !hasScore;
-      });
-    }
-
-    return filtered;
-  }, [
-    participants,
+  // Live updates (e.g. an admin finalizing) and a refetch after offline scores sync.
+  useRealtimeScoring({
+    eventId: selectedCategory?.eventId,
     categoryId,
     subcategoryId,
-    searchTerm,
-    statusFilter,
-    participantScores,
-  ]);
+    onScoringChange: refetchScores,
+    enabled: !!selectedCategory,
+  });
+  useEffect(() => {
+    if (outbox.syncedVersion > 0 && participants.length > 0) refetchScores();
+  }, [outbox.syncedVersion, participants.length, refetchScores]);
+
+  // Queued scores are newer than the server copy until they sync.
+  const participantScores = useMemo(() => {
+    const merged = { ...serverScores };
+    for (const item of Object.values(outbox.queued)) {
+      merged[item.registrationId] = {
+        hasScore: true,
+        finalized: Boolean(serverScores[item.registrationId]?.finalized),
+        finalScore: item.finalScore,
+        pending: true,
+      };
+    }
+    return merged;
+  }, [serverScores, outbox.queued]);
+
+  const filteredParticipants = useMemo(() => {
+    if (!categoryId || !subcategoryId) return [];
+    const term = searchTerm.trim().toLowerCase();
+    return participants.filter((p) => {
+      if (term && !p.participant_name.toLowerCase().includes(term) && !(p.song_title || '').toLowerCase().includes(term)) {
+        return false;
+      }
+      if (statusFilter === 'all') return true;
+      const hasScore = participantScores[p.id]?.hasScore || false;
+      return statusFilter === 'completed' ? hasScore : !hasScore;
+    });
+  }, [participants, categoryId, subcategoryId, searchTerm, statusFilter, participantScores]);
+
+  const scoredCount = participants.filter((p) => participantScores[p.id]?.hasScore).length;
+  const pendingCount = Object.keys(outbox.queued).length;
 
   if (categoriesLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-piano-wine"></div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="spinner h-8 w-8" aria-label="Loading" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-piano-wine mb-2">
-          Jury Scoring Interface
-        </h1>
-        <p className="text-gray-600">
-          Score participants for the selected competition category
+        <Eyebrow>Jury scoresheet</Eyebrow>
+        <h1 className="mt-3 text-[clamp(1.75rem,1.3rem+1.6vw,2.5rem)]">Score performances</h1>
+        <p className="mt-2 max-w-prose text-[0.9375rem] text-ink-muted">
+          Pick a category, then score each participant. Scores save on this device first, so a dropped connection never
+          loses your work.
         </p>
       </div>
 
-      {/* Category Selection */}
-      <div className="bg-white rounded-xl shadow-sm border border-piano-gold/20 p-6 mb-6">
-        <div className="flex items-center">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-piano-wine mb-2">
-              Select Competition Category
-            </label>
-            <div className="relative">
-              <select
-                value={selectedCategoryCombo}
-                onChange={(e) => setSelectedCategoryCombo(e.target.value)}
-                className="w-full appearance-none bg-white border border-piano-gold/30 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-piano-gold focus:border-transparent"
-              >
-                <option value="">Select a category...</option>
-                {categories.map((category) => (
-                  <option
-                    key={`${category.categoryId}|${category.subcategoryId}`}
-                    value={`${category.categoryId}|${category.subcategoryId}`}
-                  >
-                    {category.displayName}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-piano-wine/60 pointer-events-none" />
-            </div>
-          </div>
+      {outbox.rejected.map((item) => (
+        <div
+          key={item.registrationId + item.queuedAt}
+          role="alert"
+          className="mb-3 flex items-start gap-3 border border-rule-hairline border-l-2 border-l-[var(--status-error)] bg-status-error-bg px-4 py-3 text-[0.875rem] text-status-error-fg"
+        >
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <p className="flex-1">
+            <strong className="font-semibold">{item.participantName}</strong> ({item.finalScore.toFixed(1)}) was not saved:{' '}
+            {item.reason}
+          </p>
+          <button onClick={() => dismissRejected(item.registrationId)} className="icon-btn -my-1.5 h-7 w-7" aria-label="Dismiss">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
+
+      {pendingCount > 0 && (
+        <div
+          role="status"
+          className="mb-6 flex items-start gap-3 border border-rule-hairline border-l-2 border-l-marigold bg-status-upcoming-bg px-4 py-3 text-[0.875rem] text-status-upcoming-fg"
+        >
+          <CloudOff className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <p>
+            {outbox.online
+              ? `Syncing ${pendingCount} saved score${pendingCount > 1 ? 's' : ''}…`
+              : `You're offline. ${pendingCount} score${pendingCount > 1 ? 's are' : ' is'} saved on this device and will sync automatically when the connection is back.`}
+          </p>
+        </div>
+      )}
+
+      <div className="card border-t-2 border-t-marigold p-5 sm:p-6">
+        <label htmlFor="category" className="field-label">
+          Competition category
+        </label>
+        <div className="relative">
+          <select
+            id="category"
+            value={selectedCategoryCombo}
+            onChange={(e) => setSelectedCategoryCombo(e.target.value)}
+            className="field"
+          >
+            <option value="">Select a category…</option>
+            {categories.map((c) => (
+              <option key={`${c.categoryId}|${c.subcategoryId}`} value={`${c.categoryId}|${c.subcategoryId}`}>
+                {c.displayName}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden />
         </div>
       </div>
 
       {selectedCategoryCombo && (
-        <>
-          {/* Search and Filter Controls */}
-          <div className="bg-white rounded-xl shadow-sm border border-piano-gold/20 p-6 mb-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-piano-wine/60" />
-                  <input
-                    type="text"
-                    placeholder="Search by name or piece..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
-                  />
-                </div>
+        <section className="mt-8" aria-labelledby="participants-title">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 id="participants-title" className="text-[1.375rem]">Participants</h2>
+              <p className="mt-1 text-[0.875rem] text-ink-muted">
+                {scoredCount} of {participants.length} scored
+              </p>
+            </div>
+            <div className="flex w-full flex-wrap gap-3 sm:w-auto">
+              <div className="relative min-w-0 flex-1 sm:w-72 sm:flex-none">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden />
+                <input
+                  type="search"
+                  aria-label="Search by name or piece"
+                  placeholder="Search name or piece"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="field pl-9"
+                />
               </div>
-              <div className="sm:w-48">
-                <div className="relative">
-                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-piano-wine/60" />
-                  <select
-                    value={statusFilter}
-                    onChange={(e) =>
-                      setStatusFilter(
-                        e.target.value as 'all' | 'pending' | 'completed'
-                      )
-                    }
-                    className="w-full appearance-none pl-10 pr-10 py-3 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
-                  >
-                    <option value="all">All Participants</option>
-                    <option value="pending">Pending Scores</option>
-                    <option value="completed">Completed Scores</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-piano-wine/60 pointer-events-none" />
-                </div>
+              <div className="relative w-40">
+                <select
+                  aria-label="Filter by status"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                  className="field"
+                >
+                  <option value="all">All</option>
+                  <option value="pending">To score</option>
+                  <option value="completed">Scored</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden />
               </div>
             </div>
           </div>
 
-          {/* Participants Table */}
           {participantsLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-piano-wine"></div>
+            <div className="card flex h-48 items-center justify-center">
+              <div className="spinner h-8 w-8" aria-label="Loading" />
             </div>
           ) : (
-            <div className="bg-white rounded-xl shadow-sm border border-piano-gold/20 overflow-hidden">
-              <div className="px-6 py-4 border-b border-piano-gold/20 bg-piano-cream">
-                <h2 className="text-lg font-semibold text-piano-wine">
-                  Participants ({filteredParticipants.length})
-                </h2>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-piano-gold/20">
-                  <thead className="bg-piano-cream/50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
-                        Participant
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
-                        Performance Piece
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
-                        Duration
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
-                        Video
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
-                        Final Score
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-piano-gold/20">
-                    {filteredParticipants.map((participant, index) => (
-                      <ParticipantRow
-                        key={participant.id}
-                        participant={participant}
-                        index={index}
-                        scoreData={participantScores[participant.id]}
-                        getSongWithIndex={getSongWithIndex}
-                        onScore={setScoringParticipant}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="card overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="border-b border-rule-hairline bg-surface-warm">
+                  <tr>
+                    <th className="table-head">#</th>
+                    <th className="table-head">Participant</th>
+                    <th className="table-head hidden md:table-cell">Piece</th>
+                    <th className="table-head hidden lg:table-cell">Duration</th>
+                    <th className="table-head hidden sm:table-cell">Video</th>
+                    <th className="table-head">Status</th>
+                    <th className="table-head text-right">Score</th>
+                    <th className="table-head">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredParticipants.map((participant, index) => (
+                    <ParticipantRow
+                      key={participant.id}
+                      participant={participant}
+                      index={index}
+                      scoreData={participantScores[participant.id]}
+                      getSongWithIndex={getSongWithIndex}
+                      onScore={setScoringParticipant}
+                    />
+                  ))}
+                </tbody>
+              </table>
 
               {filteredParticipants.length === 0 && (
-                <div className="text-center py-12 bg-piano-cream/30">
-                  <Search className="mx-auto h-12 w-12 text-piano-wine/40" />
-                  <h3 className="mt-2 text-sm font-medium text-piano-wine">
-                    No participants found
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500">
+                <div className="px-6 py-14 text-center">
+                  <Search className="mx-auto h-8 w-8 text-ink-subtle" aria-hidden />
+                  <h3 className="mt-3 text-[1.125rem]">No participants found</h3>
+                  <p className="mt-1 text-[0.875rem] text-ink-muted">
                     {searchTerm || statusFilter !== 'all'
-                      ? 'Try adjusting your search or filter criteria.'
-                      : 'No participants registered for this category yet.'}
+                      ? 'Try a different search or filter.'
+                      : 'No one is registered in this category yet.'}
                   </p>
                 </div>
               )}
             </div>
           )}
-        </>
+        </section>
       )}
 
-      {scoringParticipant && selectedCategoryCombo && (
+      {scoringParticipant && (
         <ScoringModal
           participant={scoringParticipant}
-          category={{
-            id: categoryId,
-            name:
-              categories.find(
-                (c) =>
-                  c.categoryId === categoryId &&
-                  c.subcategoryId === subcategoryId
-              )?.displayName || '',
-            eventId: categories.find(
-              (c) =>
-                c.categoryId === categoryId && c.subcategoryId === subcategoryId
-            )?.eventId,
-          }}
-          subcategoryId={subcategoryId}
+          eventId={selectedCategory?.eventId}
           onClose={() => {
             setScoringParticipant(null);
             refetchScores();

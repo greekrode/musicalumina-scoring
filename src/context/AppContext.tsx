@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState } from "react";
 import { useUser, useClerk } from "@clerk/clerk-react";
-import { Shield, AlertTriangle } from "lucide-react";
+import StateCard from "../components/shared/StateCard";
 import { User } from "../types";
 
 interface AppState {
@@ -155,41 +155,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Loading state while checking authorization
   if (isLoaded && clerkUser && isAuthorized === null) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-musica-cream via-amber-50 to-musica-cream flex items-center justify-center">
-        <div className="text-center bg-white/80 backdrop-blur-lg rounded-2xl p-8 border border-musica-burgundy/10 shadow-xl max-w-md w-full">
-          <div className="w-16 h-16 bg-musica-gold rounded-xl flex items-center justify-center shadow-lg mx-auto mb-6 animate-pulse">
-            <Shield className="w-8 h-8 text-musica-burgundy" />
-          </div>
-          <h2 className="text-2xl font-bold text-musica-burgundy mb-4">
-            Checking Authorization...
-          </h2>
-          <p className="text-musica-burgundy/70">
-            Please wait while we verify your access permissions.
-          </p>
-        </div>
-      </div>
+      <StateCard eyebrow="Checking access" title="One moment…">
+        <div className="spinner mx-auto mt-2" aria-label="Loading" />
+      </StateCard>
     );
   }
 
   // Authorization failed state
   if (isLoaded && clerkUser && isAuthorized === false) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-red-25 to-red-50 flex items-center justify-center">
-        <div className="text-center bg-white/80 backdrop-blur-lg rounded-2xl p-8 border border-red-200 shadow-xl max-w-md w-full">
-          <div className="w-16 h-16 bg-red-100 rounded-xl flex items-center justify-center shadow-lg mx-auto mb-6">
-            <AlertTriangle className="w-8 h-8 text-red-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-red-700 mb-4">
-            Access Denied
-          </h2>
-          <p className="text-red-600 mb-6">
-            {authError}
-          </p>
-          <p className="text-red-500 text-sm">
-            You will be signed out automatically in a few seconds...
-          </p>
-        </div>
-      </div>
+      <StateCard eyebrow="Access denied" title="Not authorised.">
+        <p>{authError}</p>
+        <p className="mt-4 text-[0.8125rem] text-ink-subtle">Signing you out in a few seconds…</p>
+      </StateCard>
     );
   }
 

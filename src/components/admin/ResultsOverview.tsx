@@ -1,6 +1,7 @@
 import {
   Award,
   Calendar,
+  ChevronDown,
   Clock,
   Download,
   Eye,
@@ -28,6 +29,7 @@ import { supabase } from '../../lib/supabase';
 import { ParticipantWithPrize } from '../../types';
 import { ParticipantWithScores } from '../../types/results';
 import WatchVideoLink from '../shared/WatchVideoLink';
+import { Eyebrow } from '../shared/StateCard';
 import EditScoresModal from './EditScoresModal';
 import RemarksModal from './RemarksModal';
 import FinalizeModal from './FinalizeModal';
@@ -78,62 +80,66 @@ const ResultRow = React.memo(function ResultRow({
     : (participant as ParticipantWithScores).category;
 
   const getPrizeIcon = (level?: string, order?: number) => {
-    if (!level) return <Star className="w-5 h-5 text-gray-300" />;
-    if (order === 1) return <Trophy className="w-5 h-5 text-yellow-500" />;
-    if (order === 2) return <Medal className="w-5 h-5 text-gray-400" />;
-    if (order === 3) return <Medal className="w-5 h-5 text-amber-600" />;
-    return <Award className="w-5 h-5 text-piano-gold" />;
+    if (!level) return <Star className="h-5 w-5 text-ink-subtle" />;
+    if (order === 1) return <Trophy className="h-5 w-5 text-marigold" />;
+    if (order === 2) return <Medal className="h-5 w-5 text-ink-muted" />;
+    if (order === 3) return <Medal className="h-5 w-5 text-marigold-700" />;
+    return <Award className="h-5 w-5 text-marigold" />;
   };
 
   const getPrizeRowClass = (order?: number) => {
     if (!order) return '';
-    if (order <= 3) return 'bg-piano-gold/10';
-    return 'bg-piano-cream/30';
+    if (order <= 3) return 'bg-marigold-50';
+    return 'bg-surface-warm';
   };
 
   return (
-    <tr className={showAllCategories ? '' : getPrizeRowClass(displayOrder)}>
+    <tr
+      className={`border-b border-rule-hairline hover:bg-surface-warm/60 ${
+        showAllCategories ? '' : getPrizeRowClass(displayOrder)
+      }`}
+    >
       {!showAllCategories && (
-        <td className="px-6 py-4 whitespace-nowrap">
+        <td className="table-cell whitespace-nowrap">
           <div className="flex items-center">
             {getPrizeIcon(prizeLevel, displayOrder)}
-            <span className="ml-2 text-sm font-medium text-piano-wine">
+            <span className="ml-2 text-sm font-medium text-ink-primary">
               {prizeLevel || `#${index + 1}`}
             </span>
           </div>
         </td>
       )}
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-sm font-medium text-piano-wine">
+      <td className="table-cell whitespace-nowrap">
+        <div className="text-sm font-medium text-ink-primary">
           {participantName}
         </div>
       </td>
       {showAllCategories && (
-        <td className="px-6 py-4 whitespace-nowrap">
-          <div className="text-sm text-gray-900">{category}</div>
+        <td className="table-cell whitespace-nowrap">
+          <div className="text-sm text-ink-body">{category}</div>
         </td>
       )}
-      <td className="px-6 py-4">
-        <div className="text-sm text-gray-900">{piece}</div>
-        <div className="text-sm text-gray-500 flex items-center">
-          <Clock className="w-3 h-3 mr-1" />
+      <td className="table-cell">
+        <div className="text-sm text-ink-body">{piece}</div>
+        <div className="flex items-center text-sm text-ink-muted">
+          <Clock className="mr-1 h-3 w-3" />
           {duration !== 'Not specified' ? duration : '--'}
         </div>
       </td>
-      <td className="px-6 py-4 whitespace-nowrap">
+      <td className="table-cell whitespace-nowrap">
         <WatchVideoLink videoUrl={videoUrl} />
       </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="text-lg font-bold text-piano-wine">
+      <td className="table-cell whitespace-nowrap">
+        <div className="text-[1.125rem] font-semibold text-ink-primary">
           {hideScores ? '•••' : scoreCount > 0 ? score.toFixed(2) : '--'}
         </div>
       </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="flex items-center text-sm text-gray-500 mb-1">
-          <Users className="w-4 h-4 mr-1" />
+      <td className="table-cell whitespace-nowrap">
+        <div className="mb-1 flex items-center text-sm text-ink-muted">
+          <Users className="mr-1 h-4 w-4" />
           {scoreCount} jury
         </div>
-        <div className="text-xs text-gray-500 space-y-0.5">
+        <div className="space-y-0.5 text-xs text-ink-muted">
           {hideScores
             ? 'Hidden'
             : juryScores.map((jury, idx) => (
@@ -143,21 +149,21 @@ const ResultRow = React.memo(function ResultRow({
               ))}
         </div>
       </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="flex flex-col sm:flex-row gap-2">
+      <td className="table-cell whitespace-nowrap">
+        <div className="flex flex-col gap-2 sm:flex-row">
           {!readOnly && juryScores.length > 0 && (
             <button
               onClick={() => onEditScores(participantId)}
-              className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-lg border border-piano-gold/30 text-piano-wine hover:bg-piano-gold/10 focus:ring-2 focus:ring-piano-gold focus:ring-offset-2 transition-colors"
+              className="btn-outline btn-sm"
             >
               Edit Scores
             </button>
           )}
           <button
             onClick={() => onViewRemarks(participantId)}
-            className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-lg border border-piano-gold/30 text-piano-wine hover:bg-piano-gold/10 focus:ring-2 focus:ring-piano-gold focus:ring-offset-2 transition-colors"
+            className="btn-outline btn-sm"
           >
-            <MessageSquare className="w-3 h-3 mr-1" />
+            <MessageSquare className="h-3 w-3" />
             Remarks
           </button>
         </div>
@@ -459,118 +465,108 @@ export default function ResultsOverview({ readOnly = false }: { readOnly?: boole
   // --- Render ---
   if (eventsLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-piano-wine"></div>
+      <div className="flex h-64 items-center justify-center">
+        <div className="spinner" />
       </div>
     );
   }
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <div>
-          <div className="flex items-center space-x-3">
-            <h2 className="text-2xl font-bold text-piano-wine">
-              Competition Results
-            </h2>
-            {realtimeActive && (
-              <div className="flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium animate-pulse">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-ping"></div>
-                Live Update
-              </div>
-            )}
-          </div>
-          <p className="text-gray-600">
-            {showAllCategories
-              ? 'View high scorers across all categories (sorted by score)'
-              : 'View prize assignments and participant scores'}
-          </p>
-          {selectedEventId && selectedCategoryCombo && (
-            <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 mt-2 gap-2">
-              <div className="flex items-center space-x-2">
-                {realtimeStatus.connected ? (
-                  <p className="text-xs text-green-600 flex items-center">
-                    <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-                    Real-time sync active - updates automatically when juries
-                    submit scores
-                  </p>
-                ) : realtimeStatus.error ? (
-                  <p className="text-xs text-red-600 flex items-center">
-                    <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
-                    Real-time sync failed: {realtimeStatus.error}
-                  </p>
-                ) : (
-                  <p className="text-xs text-yellow-600 flex items-center">
-                    <span className="w-2 h-2 bg-yellow-500 rounded-full mr-2 animate-pulse"></span>
-                    Connecting to real-time sync...
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={handleRefreshRealtime}
-                disabled={!selectedCategoryCombo || realtimeRefreshInProgress}
-                className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-                  realtimeRefreshInProgress
-                    ? 'border-gray-300 text-gray-500 cursor-wait'
-                    : 'border-piano-gold/40 text-piano-wine hover:bg-piano-gold/10'
-                }`}
-              >
-                <RefreshCw
-                  className={`w-3.5 h-3.5 mr-1 ${
-                    realtimeRefreshInProgress ? 'animate-spin' : ''
-                  }`}
-                />
-                {realtimeRefreshInProgress
-                  ? 'Refreshing...'
-                  : 'Refresh Live Sync'}
-              </button>
+      <div className="mb-6">
+        <Eyebrow>Results</Eyebrow>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <h2 className="text-[1.5rem]">Competition Results</h2>
+          {realtimeActive && (
+            <div className="pill-ok animate-pulse">
+              <span className="h-2 w-2 animate-ping rounded-full bg-status-open-fg"></span>
+              Live Update
             </div>
           )}
         </div>
+        <p className="mt-1 text-ink-muted">
+          {showAllCategories
+            ? 'View high scorers across all categories (sorted by score)'
+            : 'View prize assignments and participant scores'}
+        </p>
+        {selectedEventId && selectedCategoryCombo && (
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {realtimeStatus.connected ? (
+              <p className="pill-ok">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-status-open-fg"></span>
+                Real-time sync active - updates automatically when juries
+                submit scores
+              </p>
+            ) : realtimeStatus.error ? (
+              <p className="pill-error">
+                <span className="h-2 w-2 rounded-full bg-status-error-fg"></span>
+                Real-time sync failed: {realtimeStatus.error}
+              </p>
+            ) : (
+              <p className="pill-wait">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-status-upcoming-fg"></span>
+                Connecting to real-time sync...
+              </p>
+            )}
+            <button
+              onClick={handleRefreshRealtime}
+              disabled={!selectedCategoryCombo || realtimeRefreshInProgress}
+              className="btn-outline btn-sm"
+            >
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${
+                  realtimeRefreshInProgress ? 'animate-spin' : ''
+                }`}
+              />
+              {realtimeRefreshInProgress
+                ? 'Refreshing...'
+                : 'Refresh Live Sync'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Event Selection */}
-      <div className="bg-white rounded-xl shadow-sm border border-piano-gold/20 p-6 mb-6">
+      <div className="card mb-6 p-6">
         <div className="flex items-center">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-piano-wine mb-2">
-              Select Event
-            </label>
-            <select
-              value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              className="w-full px-3 py-2 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
-            >
-              <option value="">Select an event...</option>
-              {events.map((event) => (
-                <option key={event.id} value={event.id}>
-                  {event.title}
-                </option>
-              ))}
-            </select>
+            <label className="field-label">Select Event</label>
+            <div className="relative">
+              <select
+                value={selectedEventId}
+                onChange={(e) => setSelectedEventId(e.target.value)}
+                className="field"
+              >
+                <option value="">Select an event...</option>
+                {events.map((event) => (
+                  <option key={event.id} value={event.id}>
+                    {event.title}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+            </div>
           </div>
         </div>
       </div>
 
       {!selectedEventId ? (
-        <div className="bg-piano-cream rounded-xl p-8 text-center">
-          <Calendar className="mx-auto h-12 w-12 text-piano-wine/40 mb-4" />
-          <h3 className="text-lg font-medium text-piano-wine mb-2">
-            Select an Event
-          </h3>
-          <p className="text-gray-600">
+        <div className="border border-rule-hairline bg-surface-warm p-8 text-center">
+          <Calendar className="mx-auto mb-4 h-12 w-12 text-ink-subtle" />
+          <h3 className="mb-2 text-[1.25rem]">Select an Event</h3>
+          <p className="text-ink-muted">
             Please select an event to view competition results
           </p>
         </div>
       ) : (
         <>
           {/* Category Selection and Controls */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div className="flex items-center space-x-4">
+          <div className="mb-6 flex flex-wrap items-center gap-3">
+            <div className="relative">
               <select
                 value={selectedCategoryCombo}
                 onChange={(e) => setSelectedCategoryCombo(e.target.value)}
-                className="px-3 py-2 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent"
+                className="field"
                 disabled={categoriesLoading}
               >
                 <option value="">Select a category</option>
@@ -584,27 +580,23 @@ export default function ResultsOverview({ readOnly = false }: { readOnly?: boole
                   </option>
                 ))}
               </select>
-              {!showAllCategories && (
-                <>
-                  <button
-                    onClick={handleExportResults}
-                    disabled={
-                      !selectedCategoryCombo ||
-                      participantsWithScores.length === 0 ||
-                      exporting
-                    }
-                    className={`inline-flex items-center px-4 py-2 rounded-lg focus:ring-2 focus:ring-offset-2 transition-colors duration-200 ${
-                      selectedCategoryCombo &&
-                      participantsWithScores.length > 0 &&
-                      !exporting
-                        ? 'bg-piano-gold text-white hover:bg-piano-gold/90 focus:ring-piano-gold'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    {exporting ? 'Exporting...' : 'Export CSV'}
-                  </button>
-                  {!readOnly && (
+              <ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+            </div>
+            {!showAllCategories && (
+              <>
+                <button
+                  onClick={handleExportResults}
+                  disabled={
+                    !selectedCategoryCombo ||
+                    participantsWithScores.length === 0 ||
+                    exporting
+                  }
+                  className="btn-primary"
+                >
+                  <Download className="h-4 w-4" />
+                  {exporting ? 'Exporting...' : 'Export CSV'}
+                </button>
+                {!readOnly && (
                   <button
                     onClick={() => setFinalizeModalOpen(true)}
                     disabled={
@@ -613,50 +605,40 @@ export default function ResultsOverview({ readOnly = false }: { readOnly?: boole
                       participantsWithScores.some((p) => p.isFinalized) ||
                       finalizing
                     }
-                    className={`inline-flex items-center px-4 py-2 rounded-lg focus:ring-2 focus:ring-offset-2 transition-colors duration-200 ${
-                      selectedCategoryCombo &&
-                      participantsWithScores.length > 0 &&
-                      !participantsWithScores.some((p) => p.isFinalized) &&
-                      !finalizing
-                        ? 'bg-piano-wine text-white hover:bg-piano-wine/90 focus:ring-piano-wine'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
+                    className="btn-secondary"
                   >
-                    <Lock className="w-4 h-4 mr-2" />
+                    <Lock className="h-4 w-4" />
                     {finalizing ? 'Finalizing...' : 'Finalize Scores'}
                   </button>
-                  )}
-                </>
-              )}
-            </div>
+                )}
+              </>
+            )}
           </div>
 
           {!selectedCategoryCombo ? (
-            <div className="bg-piano-cream rounded-xl p-8 text-center">
-              <Trophy className="mx-auto h-12 w-12 text-piano-wine/40 mb-4" />
-              <h3 className="text-lg font-medium text-piano-wine mb-2">
-                Select a Category
-              </h3>
-              <p className="text-gray-600">
+            <div className="border border-rule-hairline bg-surface-warm p-8 text-center">
+              <Trophy className="mx-auto mb-4 h-12 w-12 text-ink-subtle" />
+              <h3 className="mb-2 text-[1.25rem]">Select a Category</h3>
+              <p className="text-ink-muted">
                 Please select a category to view competition results
               </p>
             </div>
           ) : loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-piano-wine"></div>
+            <div className="flex h-64 items-center justify-center">
+              <div className="spinner" />
             </div>
           ) : (
             <>
               {/* Prize Configuration Status */}
               {!showAllCategories && prizeConfigurations.length === 0 && (
-                <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="mb-6 border border-rule-hairline border-l-2 border-l-status-upcoming-fg bg-status-upcoming-bg p-4">
                   <div className="flex items-center">
-                    <Award className="w-5 h-5 text-amber-600 mr-2" />
+                    <Award className="mr-2 h-5 w-5 text-status-upcoming-fg" />
                     <div>
-                      <h3 className="text-sm font-medium text-amber-800">
+                      <h3 className="text-sm font-medium text-ink-primary">
                         No Prize Configuration
                       </h3>
-                      <p className="text-sm text-amber-600">
+                      <p className="text-sm text-ink-body">
                         No prize levels have been configured for this category.
                         Participants will be displayed by rank order.
                       </p>
@@ -665,60 +647,51 @@ export default function ResultsOverview({ readOnly = false }: { readOnly?: boole
                 </div>
               )}
 
-              <div className="bg-white rounded-xl shadow-sm border border-piano-gold/20 overflow-hidden">
+              <div className="card overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-piano-gold/20">
-                    <thead className="bg-piano-cream/50">
+                  <table className="min-w-full">
+                    <thead className="bg-surface-warm">
                       <tr>
                         {!showAllCategories && (
-                          <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
+                          <th className="table-head">
                             {prizeConfigurations.length > 0
                               ? 'Prize Level'
                               : 'Rank'}
                           </th>
                         )}
-                        <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
-                          Participant
-                        </th>
+                        <th className="table-head">Participant</th>
                         {showAllCategories && (
-                          <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
-                            Category
-                          </th>
+                          <th className="table-head">Category</th>
                         )}
-                        <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
-                          Performance Piece
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
-                          Video
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
-                          <div className="flex items-center space-x-2">
+                        <th className="table-head">Performance Piece</th>
+                        <th className="table-head">Video</th>
+                        <th className="table-head">
+                          <div className="flex items-center gap-2">
                             <span>Final Score</span>
                             <button
                               type="button"
                               onClick={() => setHideScores((prev) => !prev)}
-                              className="p-1 rounded-full border border-piano-gold/30 text-piano-wine hover:bg-piano-gold/10"
+                              className="icon-btn h-7 w-7"
+                              aria-label={
+                                hideScores ? 'Show scores' : 'Hide scores'
+                              }
                               title={
                                 hideScores ? 'Show scores' : 'Hide scores'
                               }
                             >
                               {hideScores ? (
-                                <EyeOff className="w-4 h-4" />
+                                <EyeOff className="h-4 w-4" />
                               ) : (
-                                <Eye className="w-4 h-4" />
+                                <Eye className="h-4 w-4" />
                               )}
                             </button>
                           </div>
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
-                          Jury Count
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-piano-wine uppercase tracking-wider">
-                          Actions
-                        </th>
+                        <th className="table-head">Jury Count</th>
+                        <th className="table-head">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-piano-gold/20">
+                    <tbody>
                       {displayParticipants.map((participant, index) => (
                         <ResultRow
                           key={participant.id}
@@ -737,12 +710,10 @@ export default function ResultsOverview({ readOnly = false }: { readOnly?: boole
                 </div>
 
                 {participantsWithScores.length === 0 && (
-                  <div className="text-center py-12">
-                    <Trophy className="mx-auto h-12 w-12 text-piano-wine/40" />
-                    <h3 className="mt-2 text-sm font-medium text-piano-wine">
-                      No results yet
-                    </h3>
-                    <p className="mt-1 text-sm text-gray-500">
+                  <div className="py-12 text-center">
+                    <Trophy className="mx-auto h-12 w-12 text-ink-subtle" />
+                    <h3 className="mt-2 text-[1.25rem]">No results yet</h3>
+                    <p className="mt-1 text-sm text-ink-muted">
                       Scores will appear here once jury members begin scoring
                       participants.
                     </p>
@@ -754,30 +725,28 @@ export default function ResultsOverview({ readOnly = false }: { readOnly?: boole
               {!showAllCategories &&
                 prizeConfigurations.length > 0 &&
                 prizeAssignments.length > 0 && (
-                  <div className="mt-6 bg-white rounded-xl shadow-sm border border-piano-gold/20 p-6">
-                    <h3 className="text-lg font-semibold text-piano-wine mb-4">
-                      Prize Summary
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="card mt-6 p-6">
+                    <h3 className="mb-4 text-[1.25rem]">Prize Summary</h3>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {prizeAssignments.map((assignment) => (
                         <div
                           key={assignment.prizeLevel}
-                          className="border border-piano-gold/30 rounded-lg p-4"
+                          className="border border-rule-hairline bg-surface-warm p-4"
                         >
-                          <div className="flex items-center mb-2">
-                            <Award className="w-5 h-5 text-piano-gold" />
-                            <h4 className="ml-2 font-medium text-piano-wine">
+                          <div className="mb-2 flex items-center">
+                            <Award className="h-5 w-5 text-marigold" />
+                            <h4 className="ml-2 font-medium text-ink-primary">
                               {assignment.prizeLevel}
                             </h4>
                           </div>
-                          <p className="text-sm text-gray-600 mb-2">
+                          <p className="mb-2 text-sm text-ink-muted">
                             {assignment.winners.length} of{' '}
                             {assignment.maxWinners} winners
                             {assignment.winners.length >
                               assignment.maxWinners && ' (tied)'}
                           </p>
                           {assignment.winners.length > 0 && (
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-ink-muted">
                               Score range:{' '}
                               {Math.min(
                                 ...assignment.winners.map((w) => w.averageScore)
@@ -827,18 +796,23 @@ export default function ResultsOverview({ readOnly = false }: { readOnly?: boole
       )}
 
       {toast && (
-        <div className="fixed bottom-4 right-4 z-50">
+        <div className="fixed bottom-4 right-4 z-50 max-w-[calc(100vw-2rem)]">
           <div
-            className={`flex items-center space-x-2 px-4 py-3 rounded-lg shadow-lg text-sm text-white ${
-              toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+            role="status"
+            className={`flex items-center gap-3 border border-l-2 border-rule-hairline bg-surface-elevated px-4 py-3 text-sm text-ink-body ${
+              toast.type === 'success'
+                ? 'border-l-status-open-fg'
+                : 'border-l-status-error-fg'
             }`}
           >
             <span>{toast.message}</span>
             <button
               onClick={() => setToast(null)}
-              className="text-white/80 hover:text-white"
+              className="icon-btn h-6 w-6"
+              aria-label="Dismiss"
+              title="Dismiss"
             >
-              <X className="w-4 h-4" />
+              <X className="h-4 w-4" />
             </button>
           </div>
         </div>

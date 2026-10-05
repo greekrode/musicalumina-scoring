@@ -1,3 +1,51 @@
+@import './styles/tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    color: var(--ink-body);
+    background: var(--surface-canvas);
+    line-height: var(--leading-body);
+  }
+  h1, h2, h3 { font-family: var(--font-serif); color: var(--ink-primary); font-weight: 500; letter-spacing: var(--tracking-headline); line-height: var(--leading-headline); }
+  button { -webkit-tap-highlight-color: transparent; }
+  :focus-visible { outline: 2px solid var(--rule-focus); outline-offset: 2px; }
+  ::selection { background: var(--ml-marigold); color: var(--ml-burgundy); }
+}
+
+@layer components {
+  .type-label { font-size: var(--text-label); line-height: var(--leading-label); letter-spacing: var(--tracking-label); text-transform: uppercase; font-weight: 600; }
+  .btn { @apply inline-flex items-center justify-center gap-2 h-11 px-5 rounded-sm font-semibold text-[0.9375rem] transition-colors duration-200 ease-out-quart disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-sm { @apply h-9 px-3 text-[0.8125rem]; }
+  .btn-primary { @apply btn bg-marigold text-burgundy hover:bg-marigold-600; }
+  .btn-secondary { @apply btn bg-burgundy text-offWhite hover:bg-burgundy-600; }
+  .btn-outline { @apply btn border border-burgundy/30 text-burgundy hover:border-marigold hover:bg-marigold; }
+  .btn-ghost { @apply btn text-ink-muted hover:bg-surface-warm hover:text-ink-primary; }
+  .btn-danger { @apply btn bg-status-error-fg text-offWhite hover:opacity-90; }
+  .icon-btn { @apply inline-flex h-9 w-9 items-center justify-center rounded-sm text-ink-muted transition-colors hover:bg-surface-warm hover:text-ink-primary disabled:opacity-40 disabled:cursor-not-allowed; }
+
+  .card { @apply border border-rule-hairline bg-surface-elevated; }
+  .field { @apply w-full h-11 rounded-sm border border-rule-subtle bg-surface-elevated px-3 text-[0.9375rem] text-ink-body placeholder:text-ink-subtle transition-colors focus:border-marigold focus:outline-none focus:ring-2 focus:ring-marigold/30 disabled:bg-surface-warm disabled:text-ink-subtle; }
+  textarea.field { @apply h-auto py-2.5; }
+  select.field { @apply appearance-none pr-9; }
+  .field-label { @apply type-label mb-2 block text-ink-muted; }
+
+  .pill { @apply type-label inline-flex items-center gap-1.5 px-2 py-1; }
+  .pill-ok { @apply pill bg-status-open-bg text-status-open-fg; }
+  .pill-wait { @apply pill bg-status-upcoming-bg text-status-upcoming-fg; }
+  .pill-muted { @apply pill bg-status-ended-bg text-ink-muted; }
+  .pill-error { @apply pill bg-status-error-bg text-status-error-fg; }
+
+  .table-head { @apply type-label px-4 py-3 text-left text-ink-muted; }
+  .table-cell { @apply px-4 py-3.5 text-[0.9375rem]; }
+
+  .overlay { @apply fixed inset-0 z-50 flex items-end justify-center bg-burgundy-700/40 backdrop-blur-[2px] sm:items-center sm:p-4; }
+  .sheet { @apply w-full max-h-[92dvh] overflow-y-auto border border-rule-hairline border-t-2 border-t-marigold bg-surface-elevated animate-rise sm:max-w-xl; }
+  .spinner { @apply h-5 w-5 animate-spin rounded-full border-2 border-marigold border-t-transparent; }
+}

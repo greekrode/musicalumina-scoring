@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { ParticipantWithScores } from '../../types/results';
+import { Eyebrow } from '../shared/StateCard';
 
 interface EditScoresModalProps {
   participant: ParticipantWithScores;
@@ -76,42 +77,38 @@ export default function EditScoresModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-hidden">
-        <div className="bg-piano-wine p-4 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold">Edit Jury Scores</h3>
-              <p className="text-sm text-white/80">{participant.fullName}</p>
-            </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+    <div className="overlay">
+      <div className="sheet" role="dialog" aria-modal="true">
+        <div className="flex items-start justify-between px-6 pt-6">
+          <div>
+            <Eyebrow>Jury Scores</Eyebrow>
+            <h2 className="mt-3 text-[1.5rem]">Edit Jury Scores</h2>
+            <p className="mt-1 text-sm text-ink-muted">{participant.fullName}</p>
           </div>
+          <button onClick={onClose} className="icon-btn" aria-label="Close" title="Close">
+            <X className="h-5 w-5" />
+          </button>
         </div>
-        <div className="p-4 space-y-4 overflow-y-auto max-h-[60vh]">
+        <div className="space-y-3 px-6 pb-6 pt-6">
           {editedScores.length === 0 ? (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-ink-muted">
               No jury scores available for editing.
             </p>
           ) : (
             editedScores.map((juryScore) => (
               <div
                 key={juryScore.id}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border border-piano-gold/30 rounded-lg p-3"
+                className="flex flex-col gap-3 border border-rule-hairline p-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
-                  <p className="text-sm font-medium text-piano-wine">
+                  <p className="text-sm font-medium text-ink-primary">
                     {juryScore.name}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-ink-muted">
                     Jury ID: {juryScore.juryId}
                   </p>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                   <input
                     type="number"
                     min="0"
@@ -121,31 +118,23 @@ export default function EditScoresModal({
                     onChange={(e) =>
                       handleScoreChange(juryScore.id, e.target.value)
                     }
-                    className="w-24 px-2 py-1 border border-piano-gold/30 rounded-lg focus:ring-2 focus:ring-piano-gold focus:border-transparent text-sm"
+                    className="field w-24"
                   />
-                  <span className="text-xs text-gray-500">/ 100</span>
+                  <span className="text-xs text-ink-muted">/ 100</span>
                 </div>
               </div>
             ))
           )}
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-status-error-fg">{error}</p>}
         </div>
-        <div className="bg-gray-50 p-4 flex justify-end space-x-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800"
-            disabled={saving}
-          >
+        <div className="flex flex-wrap justify-end gap-3 border-t border-rule-hairline bg-surface-warm px-6 py-4">
+          <button onClick={onClose} className="btn-ghost" disabled={saving}>
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={saving || editedScores.length === 0}
-            className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white ${
-              saving
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-piano-wine hover:bg-piano-wine/90'
-            }`}
+            className="btn-primary"
           >
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
