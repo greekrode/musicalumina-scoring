@@ -43,7 +43,7 @@ export default function UnauthorizedModal({ isOpen, onClose }: UnauthorizedModal
               </li>
               <li className="flex items-start">
                 <span className="text-piano-gold mr-2">•</span>
-                <span><strong>Jury members:</strong> Must have the jury role</span>
+                <span><strong>Jury members:</strong> Must have the jury role (score viewers: score_staff)</span>
               </li>
             </ul>
           </div>

@@ -18,7 +18,9 @@ export default function Header() {
               <p className="text-sm text-gray-600">
                 {userRole === "admin"
                   ? "Admin Dashboard"
-                  : "Jury Scoring Interface"}
+                  : userRole === "score_staff"
+                    ? "Results (view only)"
+                    : "Jury Scoring Interface"}
               </p>
             </div>
           </div>
@@ -28,7 +30,7 @@ export default function Header() {
                 {user?.name}
               </p>
               <p className="text-xs text-gray-500">
-                {userRole === "admin" ? "Administrator" : "Jury Member"}
+                {userRole === "admin" ? "Administrator" : userRole === "score_staff" ? "Score Viewer" : "Jury Member"}
               </p>
             </div>
             <UserButton

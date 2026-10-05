@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import AdminDashboard from "./components/admin/AdminDashboard";
 import Header from "./components/Header";
 import JuryInterface from "./components/jury/JuryInterface";
+import ResultsOverview from "./components/admin/ResultsOverview";
 import UnauthorizedModal from "./components/UnauthorizedModal";
 import { AppProvider, useApp } from "./context/AppContext";
 
@@ -65,7 +66,13 @@ function AppContent() {
           <>
             <Header />
             <main className="container mx-auto px-4 py-8">
-              {userRole === "admin" ? <AdminDashboard /> : <JuryInterface />}
+              {userRole === "admin" ? (
+                <AdminDashboard />
+              ) : userRole === "score_staff" ? (
+                <ResultsOverview readOnly />
+              ) : (
+                <JuryInterface />
+              )}
             </main>
           </>
         )}

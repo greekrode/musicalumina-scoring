@@ -1,7 +1,7 @@
 export interface User {
   id: string;
   username: string;
-  role: 'admin' | 'jury';
+  role: 'admin' | 'jury' | 'score_staff';
   name: string;
 }
 

@@ -41,6 +41,7 @@ interface ResultRowProps {
   hideScores: boolean;
   onEditScores: (id: string) => void;
   onViewRemarks: (id: string) => void;
+  readOnly: boolean;
 }
 
 const ResultRow = React.memo(function ResultRow({
@@ -51,6 +52,7 @@ const ResultRow = React.memo(function ResultRow({
   hideScores,
   onEditScores,
   onViewRemarks,
+  readOnly,
 }: ResultRowProps) {
   // ParticipantWithPrize uses participant_name; ParticipantWithScores uses fullName.
   // Do not use `'prizeLevel' in participant` — prize rows may omit that key (e.g. no
@@ -143,7 +145,7 @@ const ResultRow = React.memo(function ResultRow({
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex flex-col sm:flex-row gap-2">
-          {juryScores.length > 0 && (
+          {!readOnly && juryScores.length > 0 && (
             <button
               onClick={() => onEditScores(participantId)}
               className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-lg border border-piano-gold/30 text-piano-wine hover:bg-piano-gold/10 focus:ring-2 focus:ring-piano-gold focus:ring-offset-2 transition-colors"
@@ -165,7 +167,8 @@ const ResultRow = React.memo(function ResultRow({
 });
 
 // --- Main component ---
-export default function ResultsOverview() {
+/** readOnly: score_staff view (no editing or finalizing; RLS enforces it too). */
+export default function ResultsOverview({ readOnly = false }: { readOnly?: boolean }) {
   const isInitialEventRef = useRef(true);
   const [selectedEventId, setSelectedEventId] = useState<string>(() => {
     if (typeof window === 'undefined') return '';
@@ -601,6 +604,7 @@ export default function ResultsOverview() {
                     <Download className="w-4 h-4 mr-2" />
                     {exporting ? 'Exporting...' : 'Export CSV'}
                   </button>
+                  {!readOnly && (
                   <button
                     onClick={() => setFinalizeModalOpen(true)}
                     disabled={
@@ -621,6 +625,7 @@ export default function ResultsOverview() {
                     <Lock className="w-4 h-4 mr-2" />
                     {finalizing ? 'Finalizing...' : 'Finalize Scores'}
                   </button>
+                  )}
                 </>
               )}
             </div>
@@ -724,6 +729,7 @@ export default function ResultsOverview() {
                           hideScores={hideScores}
                           onEditScores={openEditScores}
                           onViewRemarks={viewRemarks}
+                          readOnly={readOnly}
                         />
                       ))}
                     </tbody>

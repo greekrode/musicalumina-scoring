@@ -5,7 +5,7 @@ import { User } from "../types";
 
 interface AppState {
   user: User | null;
-  userRole: "admin" | "jury" | null;
+  userRole: "admin" | "jury" | "score_staff" | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -13,7 +13,7 @@ interface AppState {
 type Action =
   | {
       type: "SET_USER";
-      payload: { user: User | null; role: "admin" | "jury" | null };
+      payload: { user: User | null; role: "admin" | "jury" | "score_staff" | null };
     }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "LOGOUT" };
@@ -106,23 +106,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        if (role === "jury") {
-          // Valid jury user
+        // jury enters scores; score_staff only views results (RLS enforces both).
+        if (role === "jury" || role === "score_staff") {
           const user: User = {
             id: clerkUser.id,
             username:
               clerkUser.username ||
               clerkUser.primaryEmailAddress?.emailAddress ||
               "",
-            name: clerkUser.fullName || clerkUser.firstName || "Jury Member",
-            role: "jury",
+            name: clerkUser.fullName || clerkUser.firstName || (role === "jury" ? "Jury Member" : "Score Viewer"),
+            role,
           };
-          dispatch({ type: "SET_USER", payload: { user, role: "jury" } });
+          dispatch({ type: "SET_USER", payload: { user, role } });
           setIsAuthorized(true);
         } else {
           // Not authorized
           setIsAuthorized(false);
-          setAuthError('Access denied: You must be an admin or jury member to use this application.');
+          setAuthError('Access denied: this app needs the admin, jury or score_staff role.');
 
           // Force logout after showing error message
           signOutTimerRef.current = setTimeout(() => {
