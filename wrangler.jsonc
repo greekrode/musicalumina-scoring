@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Static SPA: no Worker script, Cloudflare serves dist/ and falls back to
+  // index.html for client routes. score.musicalumina.com is attached at cutover.
+  "name": "musicalumina-scoring",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  "observability": { "enabled": true }
+}
