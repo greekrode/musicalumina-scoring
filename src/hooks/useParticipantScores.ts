@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { CategorySubcategory, Registration } from '../types';
 import { ParticipantWithScores } from '../types/results';
 import { normalizeExternalUrl } from '../utils/url';
+import { averageScore } from '../utils/averageScore';
 import { useSupabaseQuery } from './useSupabaseQuery';
 
 interface UseParticipantScoresOptions {
@@ -86,7 +87,7 @@ export function useParticipantScores({
             name: string;
             score: number;
           }> = [];
-          let totalScore = 0;
+          const scoreValues: number[] = [];
           let scoreCount = 0;
           let isFinalized = false;
 
@@ -96,15 +97,15 @@ export function useParticipantScores({
                 id: scoring.id,
                 juryId: scoring.jury_id,
                 name: scoring.jury_name,
-                score: scoring.final_score,
+                score: Number(scoring.final_score),
               });
-              totalScore += scoring.final_score;
+              scoreValues.push(Number(scoring.final_score));
               scoreCount++;
             }
             if (scoring.finalized) isFinalized = true;
           });
 
-          const finalScore = scoreCount > 0 ? totalScore / scoreCount : 0;
+          const finalScore = averageScore(scoreValues);
 
           // Find the category display name
           let categoryDisplayName = 'Unknown Category';

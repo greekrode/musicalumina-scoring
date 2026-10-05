@@ -767,11 +767,11 @@ export default function ResultsOverview({ readOnly = false }: { readOnly?: boole
                               Score range:{' '}
                               {Math.min(
                                 ...assignment.winners.map((w) => w.averageScore)
-                              ).toFixed(1)}{' '}
+                              ).toFixed(2)}{' '}
                               -{' '}
                               {Math.max(
                                 ...assignment.winners.map((w) => w.averageScore)
-                              ).toFixed(1)}
+                              ).toFixed(2)}
                             </div>
                           )}
                         </div>

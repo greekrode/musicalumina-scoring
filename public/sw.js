@@ -2,20 +2,21 @@
 // deploys show up whenever online) with the cached copy as fallback; hashed
 // build assets, icons and fonts are cache-first. API calls (Supabase, Clerk)
 // are never cached: data offline comes from the app's own last-known cache.
-const CACHE = 'ml-scoring-shell-v2';
+const CACHE = 'ml-scoring-shell-v3';
 const STATIC = ['/logo.png', '/icon.png'];
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 // Stores the page plus every /assets/ file it references, so one online visit
 // is enough to reopen offline (files fetched before this worker took control
-// never passed through it).
+// never passed through it). The page is swapped in only after all its assets
+// are stored: a half-cached new version must never replace a working one.
 async function cachePage(cache, response) {
-  await cache.put('/', response.clone());
-  const html = await response.text();
+  const html = await response.clone().text();
   const assets = [...new Set(html.match(/\/assets\/[^"'\s)]+/g) || [])];
   const missing = [];
   for (const url of assets) if (!(await cache.match(url))) missing.push(url);
   await cache.addAll(missing);
+  await cache.put('/', response);
 }
 
 self.addEventListener('install', (event) => {
@@ -38,12 +39,14 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-async function networkFirstPage(request) {
+async function networkFirstPage(event) {
+  const { request } = event;
   const cache = await caches.open(CACHE);
   try {
     // Bad venue Wi-Fi: give up quickly and open the cached page.
     const response = await fetch(request, { signal: AbortSignal.timeout(4000) });
-    if (response.ok) await cachePage(cache, response.clone()).catch(() => {});
+    // Refresh the offline copy in the background; never delay opening the app.
+    if (response.ok) event.waitUntil(cachePage(cache, response.clone()).catch(() => {}));
     return response;
   } catch {
     return (await cache.match('/')) || Response.error();
@@ -65,7 +68,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
 
   if (request.mode === 'navigate' && url.origin === self.location.origin) {
-    event.respondWith(networkFirstPage(request));
+    event.respondWith(networkFirstPage(event));
   } else if (
     (url.origin === self.location.origin && (url.pathname.startsWith('/assets/') || STATIC.includes(url.pathname))) ||
     FONT_HOSTS.includes(url.hostname)

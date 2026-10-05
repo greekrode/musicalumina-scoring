@@ -35,6 +35,7 @@ const REJECT_REASONS: Record<string, string> = {
   invalid_score: 'Score must be between 0.1 and 100 with at most one decimal.',
   invalid_remarks: 'Remarks are too long (2000 characters max).',
   not_found: 'This registration no longer exists.',
+  event_closed: 'This event is no longer accepting scores.',
 };
 
 const POLL_MS = 5_000;
@@ -86,7 +87,7 @@ function withTimeout<T>(promise: PromiseLike<T>, ms = REQUEST_TIMEOUT_MS): Promi
 }
 
 /** True when the API answers at all (any HTTP status). */
-async function ping(): Promise<boolean> {
+export async function ping(): Promise<boolean> {
   try {
     await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
       method: 'HEAD',

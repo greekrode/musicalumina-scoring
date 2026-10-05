@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { ClerkProvider } from '@clerk/clerk-react'
 import App, { OfflineApp } from './App.tsx'
 import { readIdentity } from './lib/offlineCache'
+import { ping } from './lib/scoreOutbox'
 import './index.css'
 
 // Get Clerk publishable key from environment variable
@@ -35,7 +36,8 @@ const renderOffline = (user: NonNullable<ReturnType<typeof readIdentity>>) =>
 
 // Clerk needs the network to restore a session. A jury who signed in on this
 // device before gets an offline scoresheet instead of a blank page: at once if
-// the browser knows it is offline, or when Clerk has not loaded after a while.
+// the browser knows it is offline, or when Clerk is still loading after a while
+// AND the API does not answer. Slow-but-working Wi-Fi keeps waiting for sign-in.
 const CLERK_GRACE_MS = 8_000
 const identity = readIdentity()
 
@@ -44,9 +46,13 @@ if (identity && !navigator.onLine) {
 } else {
   renderOnline()
   if (identity) {
-    setTimeout(() => {
-      const clerk = window.Clerk as unknown as { loaded?: boolean } | undefined
-      if (!clerk?.loaded) renderOffline(identity)
-    }, CLERK_GRACE_MS)
+    const started = Date.now()
+    const check = async () => {
+      if ((window.Clerk as unknown as { loaded?: boolean } | undefined)?.loaded) return
+      // Clerk itself unreachable while the API answers: still give up after 20s.
+      if (!navigator.onLine || Date.now() - started > 20_000 || !(await ping())) renderOffline(identity)
+      else setTimeout(check, 4_000)
+    }
+    setTimeout(check, CLERK_GRACE_MS)
   }
 }
