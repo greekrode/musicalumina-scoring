@@ -146,6 +146,9 @@ export interface CategorySubcategory {
   ageRequirement: string;
   displayName: string;
   eventId: string;
+  /** Festival running order: session number and slot start, when scheduled. */
+  sessionNumber: number | null;
+  startsAt: string | null;
 }
 
 // Event Scoring types

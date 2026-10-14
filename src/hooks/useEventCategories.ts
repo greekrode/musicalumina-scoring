@@ -39,6 +39,19 @@ export function useEventCategories(eventId?: string, cacheKey?: string) {
 
       if (categoriesError) throw categoriesError;
 
+      // Published running order; categories follow it, unscheduled ones go last.
+      const { data: segments, error: segmentsError } = await supabase
+        .from('festival_schedule_segments')
+        .select('subcategory_id, session_number, starts_at')
+        .in('event_id', eventIds)
+        .eq('kind', 'performance');
+      if (segmentsError) throw segmentsError;
+      const slots = new Map<string, { session_number: number | null; starts_at: string }>();
+      segments?.forEach((s) => {
+        const prev = slots.get(s.subcategory_id);
+        if (!prev || s.starts_at < prev.starts_at) slots.set(s.subcategory_id, s);
+      });
+
       const result: CategorySubcategory[] = [];
 
       categoriesData?.forEach((category) => {
@@ -59,11 +72,18 @@ export function useEventCategories(eventId?: string, cacheKey?: string) {
             ageRequirement: subcategory.age_requirement,
             displayName: `${category.name} - ${subcategory.name} (${subcategory.age_requirement})`,
             eventId: category.event_id || '',
+            sessionNumber: slots.get(subcategory.id)?.session_number ?? null,
+            startsAt: slots.get(subcategory.id)?.starts_at ?? null,
           });
         });
       });
 
-      return result;
+      // Stable sort keeps the category order for unscheduled entries.
+      return result.sort(
+        (a, b) =>
+          (a.startsAt ? Date.parse(a.startsAt) : Number.MAX_SAFE_INTEGER) -
+          (b.startsAt ? Date.parse(b.startsAt) : Number.MAX_SAFE_INTEGER)
+      );
     },
     [eventId],
     [],

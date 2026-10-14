@@ -88,6 +88,65 @@ const ParticipantRow = React.memo(function ParticipantRow({
   );
 });
 
+/** Mobile: one tappable card per participant instead of a cramped table row. */
+const ParticipantCard = React.memo(function ParticipantCard({
+  participant,
+  index,
+  scoreData,
+  getSongWithIndex,
+  onScore,
+}: ParticipantRowProps) {
+  const finalized = Boolean(scoreData?.finalized);
+  const videoUrl = normalizeExternalUrl(participant.video_url);
+  // Red = to score, green = scored, amber = saved offline (not synced yet), grey = finalized.
+  const [dotColor, statusLabel] = finalized
+    ? ['var(--status-ended)', 'Finalized']
+    : scoreData?.pending
+    ? ['var(--status-upcoming)', 'Saved offline']
+    : scoreData?.hasScore
+    ? ['var(--status-open)', 'Scored']
+    : ['var(--status-error)', 'To score'];
+
+  return (
+    <li className="flex items-center gap-3 border-b border-rule-hairline px-4 py-3 last:border-b-0">
+      <span
+        className="h-3.5 w-3.5 shrink-0 rounded-full"
+        style={{ backgroundColor: dotColor }}
+        role="img"
+        aria-label={statusLabel}
+        title={statusLabel}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="font-semibold text-ink-primary">
+          <span className="mr-1.5 font-serif font-normal text-ink-subtle">{index + 1}.</span>
+          {participant.participant_name}
+        </div>
+        <div className="mt-0.5 text-[0.8125rem] text-ink-muted">
+          {participant.song_title ? getSongWithIndex(participant.song_title) : 'Piece not specified'}
+        </div>
+        {videoUrl && (
+          <div className="mt-1.5">
+            <WatchVideoLink videoUrl={videoUrl} />
+          </div>
+        )}
+      </div>
+      <span className="w-12 shrink-0 text-right font-serif text-[1.25rem] text-ink-primary">
+        {scoreData?.hasScore ? scoreData.finalScore.toFixed(1) : <span className="text-ink-subtle">—</span>}
+      </span>
+      <button
+        onClick={() => onScore(participant)}
+        disabled={finalized}
+        className="icon-btn h-11 w-11 shrink-0 border border-rule-subtle text-ink-primary hover:border-marigold hover:bg-marigold"
+        aria-label={finalized ? `Score for ${participant.participant_name} is finalized` : `Score ${participant.participant_name}`}
+      >
+        {finalized ? <Lock className="h-4 w-4" /> : <Pen className="h-4 w-4" />}
+      </button>
+    </li>
+  );
+});
+
+const jakartaTime = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
+
 export default function JuryInterface() {
   const { state } = useApp();
   const outbox = useOutbox();
@@ -99,6 +158,17 @@ export default function JuryInterface() {
   useEffect(() => writeCache(`combo:${state.user?.id}`, selectedCategoryCombo), [selectedCategoryCombo, state.user?.id]);
 
   const { categories, loading: categoriesLoading } = useEventCategories(undefined, 'jury-categories');
+  // Categories arrive in running order; consecutive ones of a session share a group.
+  const categoryGroups = useMemo(() => {
+    const groups: { label: string; items: typeof categories }[] = [];
+    for (const c of categories) {
+      const label = c.sessionNumber ? `Session ${c.sessionNumber}` : c.startsAt ? 'Scheduled' : 'Not scheduled';
+      const last = groups[groups.length - 1];
+      if (last?.label === label) last.items.push(c);
+      else groups.push({ label, items: [c] });
+    }
+    return groups;
+  }, [categories]);
   const { getSongWithIndex } = useSongs('songs');
 
   const [categoryId, subcategoryId] = selectedCategoryCombo ? selectedCategoryCombo.split('|') : ['', ''];
@@ -235,14 +305,24 @@ export default function JuryInterface() {
             className="field"
           >
             <option value="">Select a category…</option>
-            {categories.map((c) => (
-              <option key={`${c.categoryId}|${c.subcategoryId}`} value={`${c.categoryId}|${c.subcategoryId}`}>
-                {c.displayName}
-              </option>
+            {categoryGroups.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.items.map((c) => (
+                  <option key={`${c.categoryId}|${c.subcategoryId}`} value={`${c.categoryId}|${c.subcategoryId}`}>
+                    {c.startsAt ? `${jakartaTime.format(new Date(c.startsAt))} · ` : ''}
+                    {c.displayName}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
           <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden />
         </div>
+        {selectedCategory?.sessionNumber && selectedCategory.startsAt && (
+          <p className="mt-2 text-[0.8125rem] text-ink-muted">
+            Session {selectedCategory.sessionNumber} · starts {jakartaTime.format(new Date(selectedCategory.startsAt))}
+          </p>
+        )}
       </div>
 
       {selectedCategoryCombo && (
@@ -254,7 +334,7 @@ export default function JuryInterface() {
                 {scoredCount} of {participants.length} scored
               </p>
             </div>
-            <div className="flex w-full flex-wrap gap-3 sm:w-auto">
+            <div className="flex w-full gap-3 sm:w-auto">
               <div className="relative min-w-0 flex-1 sm:w-72 sm:flex-none">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden />
                 <input
@@ -266,7 +346,7 @@ export default function JuryInterface() {
                   className="field pl-9"
                 />
               </div>
-              <div className="relative w-40">
+              <div className="relative w-32 shrink-0 sm:w-40">
                 <select
                   aria-label="Filter by status"
                   value={statusFilter}
@@ -287,35 +367,49 @@ export default function JuryInterface() {
               <div className="spinner h-8 w-8" aria-label="Loading" />
             </div>
           ) : (
-            <div className="card overflow-x-auto">
-              <table className="min-w-full">
-                <thead className="border-b border-rule-hairline bg-surface-warm">
-                  <tr>
-                    <th className="table-head">#</th>
-                    <th className="table-head">Participant</th>
-                    <th className="table-head hidden md:table-cell">Piece</th>
-                    <th className="table-head hidden lg:table-cell">Duration</th>
-                    <th className="table-head hidden sm:table-cell">Video</th>
-                    <th className="table-head">Status</th>
-                    <th className="table-head text-right">Score</th>
-                    <th className="table-head">
-                      <span className="sr-only">Actions</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredParticipants.map((participant, index) => (
-                    <ParticipantRow
-                      key={participant.id}
-                      participant={participant}
-                      index={index}
-                      scoreData={participantScores[participant.id]}
-                      getSongWithIndex={getSongWithIndex}
-                      onScore={setScoringParticipant}
-                    />
-                  ))}
-                </tbody>
-              </table>
+            <div className="card">
+              <ul className="sm:hidden">
+                {filteredParticipants.map((participant, index) => (
+                  <ParticipantCard
+                    key={participant.id}
+                    participant={participant}
+                    index={index}
+                    scoreData={participantScores[participant.id]}
+                    getSongWithIndex={getSongWithIndex}
+                    onScore={setScoringParticipant}
+                  />
+                ))}
+              </ul>
+              <div className="hidden overflow-x-auto sm:block">
+                <table className="min-w-full">
+                  <thead className="border-b border-rule-hairline bg-surface-warm">
+                    <tr>
+                      <th className="table-head">#</th>
+                      <th className="table-head">Participant</th>
+                      <th className="table-head hidden md:table-cell">Piece</th>
+                      <th className="table-head hidden lg:table-cell">Duration</th>
+                      <th className="table-head">Video</th>
+                      <th className="table-head">Status</th>
+                      <th className="table-head text-right">Score</th>
+                      <th className="table-head">
+                        <span className="sr-only">Actions</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredParticipants.map((participant, index) => (
+                      <ParticipantRow
+                        key={participant.id}
+                        participant={participant}
+                        index={index}
+                        scoreData={participantScores[participant.id]}
+                        getSongWithIndex={getSongWithIndex}
+                        onScore={setScoringParticipant}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               {filteredParticipants.length === 0 && (
                 <div className="px-6 py-14 text-center">
