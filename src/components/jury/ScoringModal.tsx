@@ -74,6 +74,24 @@ export default function ScoringModal({ participant, eventId, onClose }: ScoringM
     return () => window.removeEventListener("keydown", onKey);
   }, [isSubmitting, onClose]);
 
+  // Phones: the on-screen keyboard shrinks only the visual viewport, so a
+  // bottom sheet sits behind it. Fit the overlay to what is actually visible.
+  const [viewport, setViewport] = useState<{ height: number; top: number } | null>(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setViewport({ height: vv.height, top: vv.offsetTop });
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
+  // Touch devices: open with the piece and links visible, not under the keyboard.
+  const [touch] = useState(() => window.matchMedia("(pointer: coarse)").matches);
+
   const handleScoreChange = (value: string) => {
     setError("");
     if (value === "") return setFinalScore(undefined);
@@ -111,12 +129,13 @@ export default function ScoringModal({ participant, eventId, onClose }: ScoringM
   return (
     <div
       className="overlay"
+      style={viewport ? { top: viewport.top, height: viewport.height, bottom: "auto" } : undefined}
       role="dialog"
       aria-modal="true"
       aria-labelledby="scoring-title"
       onClick={(e) => e.target === e.currentTarget && !isSubmitting && onClose()}
     >
-      <div className="sheet sm:max-w-2xl">
+      <div className="sheet max-h-[92%] sm:max-h-[92dvh] sm:max-w-2xl">
         <div className="flex items-start justify-between gap-4 px-6 pt-6">
           <div className="min-w-0">
             <Eyebrow>{hasExisting ? "Update score" : "Score performance"}</Eyebrow>
@@ -180,7 +199,7 @@ export default function ScoringModal({ participant, eventId, onClose }: ScoringM
                 min="0"
                 max="100"
                 step="0.1"
-                autoFocus={!isFinalized}
+                autoFocus={!isFinalized && !touch}
                 value={finalScore ?? ""}
                 onChange={(e) => handleScoreChange(e.target.value)}
                 disabled={isFinalized}
@@ -207,9 +226,9 @@ export default function ScoringModal({ participant, eventId, onClose }: ScoringM
               onChange={(e) => setRemarks(e.target.value)}
               disabled={isFinalized}
               maxLength={2000}
-              rows={3}
-              className="field resize-none"
-              placeholder="Comments or feedback for this performance"
+              rows={4}
+              // Grows with the text (field-sizing), capped so the keyboard never hides the whole sheet.
+              className="field resize-none [field-sizing:content] min-h-[7.5rem] max-h-[40dvh]"
             />
           </div>
 
@@ -243,7 +262,7 @@ export default function ScoringModal({ participant, eventId, onClose }: ScoringM
           )}
 
           {!isFinalized && (
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <div className="sticky bottom-0 -mx-6 -mb-6 flex flex-col-reverse gap-2 border-t border-rule-hairline bg-surface-elevated px-6 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:static sm:mx-0 sm:mb-0 sm:flex-row sm:justify-end sm:gap-3 sm:border-0 sm:p-0">
               <button type="button" onClick={onClose} disabled={isSubmitting} className="btn-ghost">
                 Cancel
               </button>
