@@ -111,7 +111,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // jury enters scores; score_staff only views results (RLS enforces both).
+        // jury enters scores; score_staff edits and finalizes results (RLS enforces both).
         if (role === "jury" || role === "score_staff") {
           const user: User = {
             id: clerkUser.id,

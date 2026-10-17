@@ -13,7 +13,7 @@ interface EditScoresModalProps {
 }
 
 const REJECT: Record<string, string> = {
-  forbidden: 'Only admins can adjust scores.',
+  forbidden: 'Only admins and score staff can adjust scores.',
   invalid_score: 'Each score must be between 0.1 and 100 with at most one decimal.',
   invalid_request: 'Could not save these changes. Please try again.',
 };

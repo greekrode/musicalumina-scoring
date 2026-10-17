@@ -37,37 +37,24 @@ export function useFinalizeScores(): UseFinalizeScoresResult {
       setError(null);
 
       try {
-        const { error: finalizeError } = await supabase
-          .from('event_scoring')
-          .update({ finalized: true })
-          .eq('category_id', categoryId)
-          .eq('subcategory_id', subcategoryId);
-
-        if (finalizeError) throw finalizeError;
-
         const winnersToInsert = winners
           .filter((winner) => !!winner.prizeLevel)
           .map((winner) => ({
-            event_id: eventId,
-            category_id: categoryId,
-            subcategory_id: subcategoryId,
             participant_name: toTitleCase(winner.participant_name),
             prize_title: winner.prizeLevel!,
           }));
 
-        if (winnersToInsert.length > 0) {
-          await supabase
-            .from('event_winners')
-            .delete()
-            .eq('event_id', eventId)
-            .eq('category_id', categoryId)
-            .eq('subcategory_id', subcategoryId);
-
-          const { error: insertError } = await supabase
-            .from('event_winners')
-            .insert(winnersToInsert);
-
-          if (insertError) throw insertError;
+        // One transaction: locks the scores and replaces the winners (admin or score_staff).
+        const { data, error: finalizeError } = await supabase.rpc('finalize_scores', {
+          p_event_id: eventId,
+          p_category_id: categoryId,
+          p_subcategory_id: subcategoryId,
+          p_winners: winnersToInsert,
+        });
+        if (finalizeError) throw finalizeError;
+        const code = (data as { error?: string } | null)?.error;
+        if (code) {
+          throw new Error(code === 'forbidden' ? 'You do not have permission to finalize scores.' : `Finalize failed (${code}).`);
         }
       } catch (err) {
         const message =

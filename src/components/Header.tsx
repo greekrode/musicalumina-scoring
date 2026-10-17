@@ -3,7 +3,7 @@ import { CloudOff, RefreshCw, Wifi } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { useOutbox } from "../lib/scoreOutbox";
 
-const ROLE_LABEL = { admin: "Admin", score_staff: "Results · view only", jury: "Jury" } as const;
+const ROLE_LABEL = { admin: "Admin", score_staff: "Results", jury: "Jury" } as const;
 
 /** Jury-only: connection and offline-queue state. */
 function SyncStatus() {

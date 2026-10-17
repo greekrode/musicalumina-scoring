@@ -6,6 +6,7 @@ import { useParticipants } from '../../hooks/useParticipants';
 import { useRealtimeScoring } from '../../hooks/useRealtimeScoring';
 import { useSongs } from '../../hooks/useSongs';
 import { useSupabaseQuery } from '../../hooks/useSupabaseQuery';
+import { groupCategoriesBySession, jakartaTime } from '../../lib/categoryGroups';
 import { dismissRejected, useOutbox } from '../../lib/scoreOutbox';
 import { readCache, writeCache } from '../../lib/offlineCache';
 import { supabase } from '../../lib/supabase';
@@ -145,8 +146,6 @@ const ParticipantCard = React.memo(function ParticipantCard({
   );
 });
 
-const jakartaTime = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
-
 export default function JuryInterface() {
   const { state } = useApp();
   const outbox = useOutbox();
@@ -158,17 +157,7 @@ export default function JuryInterface() {
   useEffect(() => writeCache(`combo:${state.user?.id}`, selectedCategoryCombo), [selectedCategoryCombo, state.user?.id]);
 
   const { categories, loading: categoriesLoading } = useEventCategories(undefined, 'jury-categories');
-  // Categories arrive in running order; consecutive ones of a session share a group.
-  const categoryGroups = useMemo(() => {
-    const groups: { label: string; items: typeof categories }[] = [];
-    for (const c of categories) {
-      const label = c.sessionNumber ? `Session ${c.sessionNumber}` : c.startsAt ? 'Scheduled' : 'Not scheduled';
-      const last = groups[groups.length - 1];
-      if (last?.label === label) last.items.push(c);
-      else groups.push({ label, items: [c] });
-    }
-    return groups;
-  }, [categories]);
+  const categoryGroups = useMemo(() => groupCategoriesBySession(categories), [categories]);
   const { getSongWithIndex } = useSongs('songs');
 
   const [categoryId, subcategoryId] = selectedCategoryCombo ? selectedCategoryCombo.split('|') : ['', ''];

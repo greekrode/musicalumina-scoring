@@ -52,7 +52,7 @@ function AppContent() {
                 <AdminDashboard />
               ) : userRole === "score_staff" ? (
                 <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
-                  <ResultsOverview readOnly />
+                  <ResultsOverview />
                 </div>
               ) : (
                 <JuryInterface />

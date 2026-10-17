@@ -15,7 +15,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEventCategories } from '../../hooks/useEventCategories';
 import { useEvents } from '../../hooks/useEvents';
 import { useParticipants } from '../../hooks/useParticipants';
@@ -25,6 +25,7 @@ import { useFinalizeScores } from '../../hooks/useFinalizeScores';
 import { usePrizeAssignmentCalculation } from '../../hooks/usePrizeAssignmentCalculation';
 import { useResultsExport } from '../../hooks/useResultsExport';
 import { useParticipantScores } from '../../hooks/useParticipantScores';
+import { groupCategoriesBySession, jakartaTime } from '../../lib/categoryGroups';
 import { supabase } from '../../lib/supabase';
 import { ParticipantWithPrize } from '../../types';
 import { ParticipantWithScores } from '../../types/results';
@@ -44,7 +45,6 @@ interface ResultRowProps {
   hideScores: boolean;
   onEditScores: (id: string) => void;
   onViewRemarks: (id: string) => void;
-  readOnly: boolean;
 }
 
 const ResultRow = React.memo(function ResultRow({
@@ -55,7 +55,6 @@ const ResultRow = React.memo(function ResultRow({
   hideScores,
   onEditScores,
   onViewRemarks,
-  readOnly,
 }: ResultRowProps) {
   // ParticipantWithPrize uses participant_name; ParticipantWithScores uses fullName.
   // Do not use `'prizeLevel' in participant` — prize rows may omit that key (e.g. no
@@ -152,7 +151,7 @@ const ResultRow = React.memo(function ResultRow({
       </td>
       <td className="table-cell whitespace-nowrap">
         <div className="flex flex-col gap-2 sm:flex-row">
-          {!readOnly && juryScores.length > 0 && (
+          {juryScores.length > 0 && (
             <button
               onClick={() => onEditScores(participantId)}
               className="btn-outline btn-sm"
@@ -174,8 +173,7 @@ const ResultRow = React.memo(function ResultRow({
 });
 
 // --- Main component ---
-/** readOnly: score_staff view (no editing or finalizing; RLS enforces it too). */
-export default function ResultsOverview({ readOnly = false }: { readOnly?: boolean }) {
+export default function ResultsOverview() {
   const isInitialEventRef = useRef(true);
   const [selectedEventId, setSelectedEventId] = useState<string>(() => {
     if (typeof window === 'undefined') return '';
@@ -216,6 +214,7 @@ export default function ResultsOverview({ readOnly = false }: { readOnly?: boole
   const { events, loading: eventsLoading } = useEvents();
   const { categories, loading: categoriesLoading } =
     useEventCategories(selectedEventId);
+  const categoryGroups = useMemo(() => groupCategoriesBySession(categories), [categories]);
 
   const [categoryId, subcategoryId] =
     selectedCategoryCombo && selectedCategoryCombo !== 'all'
@@ -572,13 +571,18 @@ export default function ResultsOverview({ readOnly = false }: { readOnly?: boole
               >
                 <option value="">Select a category</option>
                 <option value="all">All Categories</option>
-                {categories.map((category) => (
-                  <option
-                    key={`${category.categoryId}|${category.subcategoryId}`}
-                    value={`${category.categoryId}|${category.subcategoryId}`}
-                  >
-                    {category.displayName}
-                  </option>
+                {categoryGroups.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.items.map((category) => (
+                      <option
+                        key={`${category.categoryId}|${category.subcategoryId}`}
+                        value={`${category.categoryId}|${category.subcategoryId}`}
+                      >
+                        {category.startsAt ? `${jakartaTime.format(new Date(category.startsAt))} · ` : ''}
+                        {category.displayName}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
               <ChevronDown aria-hidden className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
@@ -613,21 +617,19 @@ export default function ResultsOverview({ readOnly = false }: { readOnly?: boole
                   hideScores={hideScores}
                   onDone={showToast}
                 />
-                {!readOnly && (
-                  <button
-                    onClick={() => setFinalizeModalOpen(true)}
-                    disabled={
-                      !selectedCategoryCombo ||
-                      participantsWithScores.length === 0 ||
-                      participantsWithScores.some((p) => p.isFinalized) ||
-                      finalizing
-                    }
-                    className="btn-secondary"
-                  >
-                    <Lock className="h-4 w-4" />
-                    {finalizing ? 'Finalizing...' : 'Finalize Scores'}
-                  </button>
-                )}
+                <button
+                  onClick={() => setFinalizeModalOpen(true)}
+                  disabled={
+                    !selectedCategoryCombo ||
+                    participantsWithScores.length === 0 ||
+                    participantsWithScores.some((p) => p.isFinalized) ||
+                    finalizing
+                  }
+                  className="btn-secondary"
+                >
+                  <Lock className="h-4 w-4" />
+                  {finalizing ? 'Finalizing...' : 'Finalize Scores'}
+                </button>
               </>
             )}
           </div>
@@ -719,7 +721,6 @@ export default function ResultsOverview({ readOnly = false }: { readOnly?: boole
                           hideScores={hideScores}
                           onEditScores={openEditScores}
                           onViewRemarks={viewRemarks}
-                          readOnly={readOnly}
                         />
                       ))}
                     </tbody>

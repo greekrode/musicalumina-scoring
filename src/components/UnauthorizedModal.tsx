@@ -27,7 +27,7 @@ export default function UnauthorizedModal({ isOpen, onClose }: UnauthorizedModal
             {[
               ['admin', 'Manage events and finalize results'],
               ['jury', 'Score performances'],
-              ['score_staff', 'View results'],
+              ['score_staff', 'Edit and finalize results'],
             ].map(([role, what]) => (
               <div key={role} className="flex items-center justify-between gap-4 py-2.5">
                 <dt className="font-mono text-[0.8125rem] text-ink-primary">{role}</dt>
